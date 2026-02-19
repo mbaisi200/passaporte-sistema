@@ -42,6 +42,7 @@ interface FormData {
   fatherName: string;
   birthDate: string;
   birthCity: string;
+  birthState: string;
   gender: string;
   skinColor: string;
   maritalStatus: string;
@@ -87,6 +88,7 @@ export default function FormularioPage() {
     fatherName: '',
     birthDate: '',
     birthCity: '',
+    birthState: '',
     gender: '',
     skinColor: '',
     maritalStatus: '',
@@ -122,7 +124,7 @@ export default function FormularioPage() {
       router.push('/login');
     }
     
-    // Check if user is blocked
+    // Check if user is blocked and pre-fill CPF
     if (!loading && user && userData?.cpf) {
       const checkBlocked = async () => {
         const cpfDoc = await getDoc(doc(db, 'authorized_cpfs', userData.cpf));
@@ -131,6 +133,10 @@ export default function FormularioPage() {
         }
       };
       checkBlocked();
+      
+      // Pre-fill CPF from logged in user
+      const formattedCpf = userData.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+      setFormData(prev => ({ ...prev, cpf: formattedCpf }));
     }
   }, [user, loading, router, userData]);
 
@@ -359,14 +365,52 @@ export default function FormularioPage() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="birthCity">Naturalidade (Cidade/UF) *</Label>
+                  <Label htmlFor="birthCity">Naturalidade (Cidade) *</Label>
                   <Input
                     id="birthCity"
                     value={formData.birthCity}
                     onChange={(e) => handleInputChange('birthCity', e.target.value)}
-                    placeholder="Ex: SÃO PAULO/SP"
+                    placeholder="Ex: SÃO PAULO"
                     required
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Estado (Naturalidade) *</Label>
+                  <Select value={formData.birthState} onValueChange={(v) => setFormData(prev => ({ ...prev, birthState: v }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AC">Acre</SelectItem>
+                      <SelectItem value="AL">Alagoas</SelectItem>
+                      <SelectItem value="AP">Amapá</SelectItem>
+                      <SelectItem value="AM">Amazonas</SelectItem>
+                      <SelectItem value="BA">Bahia</SelectItem>
+                      <SelectItem value="CE">Ceará</SelectItem>
+                      <SelectItem value="DF">Distrito Federal</SelectItem>
+                      <SelectItem value="ES">Espírito Santo</SelectItem>
+                      <SelectItem value="GO">Goiás</SelectItem>
+                      <SelectItem value="MA">Maranhão</SelectItem>
+                      <SelectItem value="MT">Mato Grosso</SelectItem>
+                      <SelectItem value="MS">Mato Grosso do Sul</SelectItem>
+                      <SelectItem value="MG">Minas Gerais</SelectItem>
+                      <SelectItem value="PA">Pará</SelectItem>
+                      <SelectItem value="PB">Paraíba</SelectItem>
+                      <SelectItem value="PR">Paraná</SelectItem>
+                      <SelectItem value="PE">Pernambuco</SelectItem>
+                      <SelectItem value="PI">Piauí</SelectItem>
+                      <SelectItem value="RJ">Rio de Janeiro</SelectItem>
+                      <SelectItem value="RN">Rio Grande do Norte</SelectItem>
+                      <SelectItem value="RS">Rio Grande do Sul</SelectItem>
+                      <SelectItem value="RO">Rondônia</SelectItem>
+                      <SelectItem value="RR">Roraima</SelectItem>
+                      <SelectItem value="SC">Santa Catarina</SelectItem>
+                      <SelectItem value="SP">São Paulo</SelectItem>
+                      <SelectItem value="SE">Sergipe</SelectItem>
+                      <SelectItem value="TO">Tocantins</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -444,11 +488,11 @@ export default function FormularioPage() {
                   <Input
                     id="cpf"
                     value={formData.cpf}
-                    onChange={(e) => setFormData(prev => ({ ...prev, cpf: maskCPF(e.target.value) }))}
-                    placeholder="000.000.000-00"
-                    maxLength={14}
+                    readOnly
+                    className="bg-gray-100 cursor-not-allowed"
                     required
                   />
+                  <p className="text-xs text-gray-500">Preenchido automaticamente com seu CPF de login.</p>
                 </div>
                 
                 <div className="space-y-2">

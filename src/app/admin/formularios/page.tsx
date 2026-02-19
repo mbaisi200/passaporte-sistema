@@ -176,7 +176,7 @@ export default function FormulariosPage() {
     content += `NOME DA MÃE: ${d.motherName || '-'}\n`;
     if(d.fatherName) content += `NOME DO PAI: ${d.fatherName}\n`;
     content += `DATA DE NASCIMENTO: ${formatDateForm(d.birthDate || '')}\n`;
-    content += `NATURALIDADE: ${d.birthCity || '-'}\n`;
+    content += `NATURALIDADE: ${d.birthCity || '-'}${d.birthState ? '/' + d.birthState : ''}\n`;
     content += `SEXO: ${d.gender === 'M' ? 'MASCULINO' : d.gender === 'F' ? 'FEMININO' : '-'}\n`;
     content += `COR/RAÇA: ${d.skinColor || '-'}\n`;
     content += `ESTADO CIVIL: ${d.maritalStatus || '-'}\n`;
@@ -272,7 +272,7 @@ export default function FormulariosPage() {
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500">Naturalidade</p>
-            <p className="font-semibold">{dados.birthCity || '-'}</p>
+            <p className="font-semibold">{dados.birthCity || '-'}{dados.birthState ? '/' + dados.birthState : ''}</p>
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500">Nome da Mãe</p>
