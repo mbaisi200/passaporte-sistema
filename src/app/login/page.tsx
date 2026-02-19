@@ -123,7 +123,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-xl sm:text-2xl text-[#002776]">Acesso ao Sistema</CardTitle>
           <CardDescription className="text-sm sm:text-base">
-            Digite seu CPF ou email e senha para acessar
+            Digite seu CPF e senha para acessar o sistema
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -166,8 +166,8 @@ export default function LoginPage() {
               />
               <p className="text-xs text-gray-500">
                 {inputType === 'cpf' 
-                  ? 'Para login de administrador, digite seu email completo com @' 
-                  : 'Para login de cliente, digite apenas os números do CPF'}
+                  ? 'Admin? Digite seu email completo (ex: admin@passaporte.com)' 
+                  : 'Cliente? Digite apenas os números do CPF'}
               </p>
             </div>
             
