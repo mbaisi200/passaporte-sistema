@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
+import { 
   collection,
   getDocs,
   deleteDoc,
@@ -35,8 +35,7 @@ import {
   query,
   orderBy
 } from 'firebase/firestore';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { 
   UserPlus, 
   Trash2, 
@@ -157,9 +156,33 @@ export default function ManageCpfsPage() {
     try {
       const email = generateEmailFromCPF(cleanCpf);
       
-      // Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, DEFAULT_PASSWORD);
-      const newUserId = userCredential.user.uid;
+      // Use Firebase REST API to create user without affecting admin session
+      const apiKey = "AIzaSyBtmRymondW0EVj06CiIUsvWMaz-QWv9OI";
+      const response = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            password: DEFAULT_PASSWORD,
+            returnSecureToken: false,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.error?.message === 'EMAIL_EXISTS') {
+          setMessage({ type: 'error', text: 'Este CPF já tem uma conta associada.' });
+          setSubmitting(false);
+          return;
+        }
+        throw new Error(errorData.error?.message || 'Erro ao criar usuário');
+      }
+
+      const userData = await response.json();
+      const newUserId = userData.localId;
       
       // Create user document in Firestore
       await setDoc(doc(db, 'users', newUserId), {
@@ -190,11 +213,7 @@ export default function ManageCpfsPage() {
     } catch (error: unknown) {
       console.error('Erro:', error);
       if (error instanceof Error) {
-        if (error.message.includes('email-already-in-use')) {
-          setMessage({ type: 'error', text: 'Este CPF já tem uma conta associada.' });
-        } else {
-          setMessage({ type: 'error', text: `Erro: ${error.message}` });
-        }
+        setMessage({ type: 'error', text: `Erro: ${error.message}` });
       }
     } finally {
       setSubmitting(false);
