@@ -79,6 +79,7 @@ export default function FormularioPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [blocked, setBlocked] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
@@ -180,6 +181,10 @@ export default function FormularioPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setShowReview(true);
+  };
+
+  const handleConfirmSubmit = async () => {
     setSubmitting(true);
 
     try {
@@ -193,6 +198,7 @@ export default function FormularioPage() {
       });
 
       setSuccess(true);
+      setShowReview(false);
     } catch (error) {
       console.error('Erro ao salvar formulário:', error);
       alert('Erro ao enviar formulário. Tente novamente.');
@@ -256,6 +262,221 @@ export default function FormularioPage() {
             </Button>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  // Review screen before submission
+  const formatDateDisplay = (dateString: string) => {
+    if (!dateString) return '-';
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateString;
+  };
+
+  const getGenderLabel = (gender: string) => {
+    if (gender === 'M') return 'Masculino';
+    if (gender === 'F') return 'Feminino';
+    return '-';
+  };
+
+  if (showReview) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#002776] to-[#009639] rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold">SB</span>
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-[#002776]">SB Viagens e Turismo</h1>
+                  <p className="text-sm text-gray-500">Revise seus dados antes de enviar</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Alert className="mb-6 border-yellow-300 bg-yellow-50">
+            <AlertCircle className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-800">
+              <strong>Atenção:</strong> Confira todos os dados abaixo antes de enviar o formulário. 
+              Se houver algum erro, clique em "Voltar e Corrigir".
+            </AlertDescription>
+          </Alert>
+
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-[#002776] flex items-center gap-2">
+                <User className="h-5 w-5" />
+                1. Dados Pessoais
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div><span className="font-medium text-gray-500">Nome Completo:</span><br />{formData.fullName || '-'}</div>
+                {formData.previousName && <div><span className="font-medium text-gray-500">Nome Anterior:</span><br />{formData.previousName}</div>}
+                {formData.nameChangeReason && <div><span className="font-medium text-gray-500">Motivo Alteração:</span><br />{formData.nameChangeReason}</div>}
+                <div><span className="font-medium text-gray-500">Nome da Mãe:</span><br />{formData.motherName || '-'}</div>
+                <div><span className="font-medium text-gray-500">Nome do Pai:</span><br />{formData.fatherName || '-'}</div>
+                <div><span className="font-medium text-gray-500">Data de Nascimento:</span><br />{formatDateDisplay(formData.birthDate)}</div>
+                <div><span className="font-medium text-gray-500">Naturalidade:</span><br />{formData.birthCity || '-'}{formData.birthState ? '/' + formData.birthState : ''}</div>
+                <div><span className="font-medium text-gray-500">Sexo:</span><br />{getGenderLabel(formData.gender)}</div>
+                <div><span className="font-medium text-gray-500">Cor/Raça:</span><br />{formData.skinColor || '-'}</div>
+                <div><span className="font-medium text-gray-500">Estado Civil:</span><br />{formData.maritalStatus || '-'}</div>
+                {formData.responsibleCpf && <div><span className="font-medium text-gray-500">CPF do Responsável:</span><br />{formData.responsibleCpf}</div>}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-[#002776] flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                2. Documentação
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div><span className="font-medium text-gray-500">CPF:</span><br />{formData.cpf || '-'}</div>
+                <div><span className="font-medium text-gray-500">RG:</span><br />{formData.rg || '-'}</div>
+                <div><span className="font-medium text-gray-500">Órgão Expedidor:</span><br />{formData.rgIssuer || '-'}</div>
+                <div><span className="font-medium text-gray-500">Data Expedição RG:</span><br />{formatDateDisplay(formData.rgIssueDate)}</div>
+                <div><span className="font-medium text-gray-500">Passaporte Anterior:</span><br />{formData.previousPassport === 'SIM' ? 'Sim' : formData.previousPassport === 'NAO' ? 'Não' : '-'}</div>
+                {formData.previousPassport === 'SIM' && (
+                  <>
+                    <div><span className="font-medium text-gray-500">Série Passaporte:</span><br />{formData.passportSeries || '-'}</div>
+                    <div><span className="font-medium text-gray-500">Número Passaporte:</span><br />{formData.passportNumber || '-'}</div>
+                    <div><span className="font-medium text-gray-500">Situação:</span><br />{formData.passportStatus || '-'}</div>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-[#002776] flex items-center gap-2">
+                <FileCheck className="h-5 w-5" />
+                3. Certidão
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div><span className="font-medium text-gray-500">Tipo:</span><br />{formData.certificateType || '-'}</div>
+                <div><span className="font-medium text-gray-500">Modelo:</span><br />{formData.certificateModel === 'NOVO' ? 'Modelo Novo' : formData.certificateModel === 'ANTIGO' ? 'Modelo Antigo' : '-'}</div>
+                {formData.certificateModel === 'NOVO' && (
+                  <div className="md:col-span-2"><span className="font-medium text-gray-500">Número Certidão:</span><br />{formData.certificateNumberNew || '-'}</div>
+                )}
+                {formData.certificateModel === 'ANTIGO' && (
+                  <>
+                    <div><span className="font-medium text-gray-500">Número:</span><br />{formData.certificateNumberOld || '-'}</div>
+                    <div><span className="font-medium text-gray-500">Livro:</span><br />{formData.certificateBook || '-'}</div>
+                    <div><span className="font-medium text-gray-500">Folha:</span><br />{formData.certificatePage || '-'}</div>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-[#002776] flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                4. Contato e Endereço
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="md:col-span-2"><span className="font-medium text-gray-500">Endereço:</span><br />{formData.address || '-'}</div>
+                <div><span className="font-medium text-gray-500">Bairro:</span><br />{formData.neighborhood || '-'}</div>
+                <div><span className="font-medium text-gray-500">Cidade:</span><br />{formData.city || '-'}</div>
+                <div><span className="font-medium text-gray-500">Estado:</span><br />{formData.state || '-'}</div>
+                <div><span className="font-medium text-gray-500">CEP:</span><br />{formData.zipCode || '-'}</div>
+                <div><span className="font-medium text-gray-500">Telefone:</span><br />{formData.phone || '-'}</div>
+                <div><span className="font-medium text-gray-500">E-mail:</span><br />{formData.email || '-'}</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-[#002776] flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                5. Informações Profissionais
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm">
+                <div><span className="font-medium text-gray-500">Profissão:</span><br />{formData.profession || '-'}</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {formData.travelAuthorization && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="text-[#002776] flex items-center gap-2">
+                  <Plane className="h-5 w-5" />
+                  6. Autorização de Viagem (Menor)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm">
+                  <div><span className="font-medium text-gray-500">Tipo:</span><br />{formData.travelAuthorization || '-'}</div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-[#002776] flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                7. Detalhes da Emissão
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm">
+                <div><span className="font-medium text-gray-500">Tipo de Passaporte:</span><br />{formData.passportType || '-'}</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex gap-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 py-6 text-lg"
+              onClick={() => setShowReview(false)}
+              disabled={submitting}
+            >
+              ← Voltar e Corrigir
+            </Button>
+            <Button
+              type="button"
+              className="flex-1 bg-[#009639] hover:bg-[#007a2f] py-6 text-lg"
+              onClick={handleConfirmSubmit}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="mr-2 h-5 w-5" />
+                  Confirmar e Enviar
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
