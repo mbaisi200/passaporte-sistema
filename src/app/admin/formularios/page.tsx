@@ -180,7 +180,7 @@ export default function FormulariosPage() {
     content += `SEXO: ${d.gender === 'M' ? 'MASCULINO' : d.gender === 'F' ? 'FEMININO' : '-'}\n`;
     content += `COR/RAÇA: ${d.skinColor || '-'}\n`;
     content += `ESTADO CIVIL: ${d.maritalStatus || '-'}\n`;
-    if(d.responsibleCpf) content += `CPF DO RESPONSÁVEL: ${d.responsibleCpf}\n`;
+    if(d.responsibleCpf) content += `CPF DO RESPONSÁVEL: ${formatCPF(d.responsibleCpf)}\n`;
 
     content += `\n2. DOCUMENTAÇÃO\n`;
     content += `----------------\n`;
@@ -188,7 +188,7 @@ export default function FormulariosPage() {
     content += `RG: ${d.rg || '-'}\n`;
     content += `ÓRGÃO EXPEDIDOR: ${d.rgIssuer || '-'}\n`;
     content += `DATA EXPEDIÇÃO RG: ${formatDateForm(d.rgIssueDate || '')}\n`;
-    content += `POSSUI PASSAPORTE ANTERIOR: ${d.previousPassport || '-'}\n`;
+    content += `POSSUI PASSAPORTE ANTERIOR: ${d.previousPassport === 'SIM' ? 'Sim' : d.previousPassport === 'NAO' ? 'Não' : '-'}\n`;
     if(d.previousPassport === 'SIM') {
       content += `SÉRIE PASSAPORTE: ${d.passportSeries || '-'}\n`;
       content += `NÚMERO PASSAPORTE: ${d.passportNumber || '-'}\n`;
@@ -213,8 +213,8 @@ export default function FormulariosPage() {
     content += `BAIRRO: ${d.neighborhood || '-'}\n`;
     content += `CIDADE: ${d.city || '-'}\n`;
     content += `ESTADO: ${d.state || '-'}\n`;
-    content += `CEP: ${d.zipCode || '-'}\n`;
-    content += `TELEFONE: ${d.phone || '-'}\n`;
+    content += `CEP: ${d.zipCode ? d.zipCode.replace(/(\d{5})(\d{3})/, '$1-$2') : '-'}\n`;
+    content += `TELEFONE: ${d.phone ? d.phone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : '-'}\n`;
     content += `E-MAIL: ${d.email || '-'}\n`;
     content += `PROFISSÃO: ${d.profession || '-'}\n`;
 
@@ -242,101 +242,229 @@ export default function FormulariosPage() {
     URL.revokeObjectURL(url);
   };
 
+  const formatPhone = (phone: string) => {
+    if (!phone) return '-';
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 11) {
+      return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    } else if (cleaned.length === 10) {
+      return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+    }
+    return phone;
+  };
+
+  const formatZipCode = (zip: string) => {
+    if (!zip) return '-';
+    const cleaned = zip.replace(/\D/g, '');
+    if (cleaned.length === 8) {
+      return cleaned.replace(/(\d{5})(\d{3})/, '$1-$2');
+    }
+    return zip;
+  };
+
   const renderFormDetails = () => {
     if (!selectedForm) return null;
     
     const { dados } = selectedForm;
     
     return (
-      <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm font-medium text-gray-500">Nome Completo</p>
-            <p className="font-semibold">{dados.fullName || '-'}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">CPF</p>
-            <p className="font-semibold">{formatCPF(selectedForm.cpf)}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Email</p>
-            <p className="font-semibold">{dados.email || '-'}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Telefone</p>
-            <p className="font-semibold">{dados.phone || '-'}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Data de Nascimento</p>
-            <p className="font-semibold">{formatDateForm(dados.birthDate || '')}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Naturalidade</p>
-            <p className="font-semibold">{dados.birthCity || '-'}{dados.birthState ? '/' + dados.birthState : ''}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Nome da Mãe</p>
-            <p className="font-semibold">{dados.motherName || '-'}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Nome do Pai</p>
-            <p className="font-semibold">{dados.fatherName || '-'}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">RG</p>
-            <p className="font-semibold">{dados.rg || '-'}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Órgão Expedidor</p>
-            <p className="font-semibold">{dados.rgIssuer || '-'}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Endereço</p>
-            <p className="font-semibold">{dados.address || '-'}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Cidade/UF</p>
-            <p className="font-semibold">{dados.city}/{dados.state}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Profissão</p>
-            <p className="font-semibold">{dados.profession || '-'}</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Tipo Passaporte</p>
-            <p className="font-semibold">{dados.passportType || '-'}</p>
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+        {/* Seção 1: Dados Pessoais */}
+        <div className="border rounded-lg p-4 bg-gray-50">
+          <h4 className="font-semibold text-[#002776] mb-3 border-b pb-2">1. Dados Pessoais</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div className="break-words">
+              <span className="text-gray-500">Nome Completo:</span>
+              <p className="font-medium">{dados.fullName || '-'}</p>
+            </div>
+            {dados.previousName && (
+              <div className="break-words">
+                <span className="text-gray-500">Nome Anterior:</span>
+                <p className="font-medium">{dados.previousName}</p>
+              </div>
+            )}
+            {dados.nameChangeReason && (
+              <div className="break-words">
+                <span className="text-gray-500">Motivo Alteração:</span>
+                <p className="font-medium">{dados.nameChangeReason}</p>
+              </div>
+            )}
+            <div className="break-words">
+              <span className="text-gray-500">Nome da Mãe:</span>
+              <p className="font-medium">{dados.motherName || '-'}</p>
+            </div>
+            <div className="break-words">
+              <span className="text-gray-500">Nome do Pai:</span>
+              <p className="font-medium">{dados.fatherName || '-'}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Data de Nascimento:</span>
+              <p className="font-medium">{formatDateForm(dados.birthDate || '')}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Naturalidade:</span>
+              <p className="font-medium">{dados.birthCity || '-'}{dados.birthState ? '/' + dados.birthState : ''}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Sexo:</span>
+              <p className="font-medium">{dados.gender === 'M' ? 'Masculino' : dados.gender === 'F' ? 'Feminino' : '-'}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Cor/Raça:</span>
+              <p className="font-medium">{dados.skinColor || '-'}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Estado Civil:</span>
+              <p className="font-medium">{dados.maritalStatus || '-'}</p>
+            </div>
+            {dados.responsibleCpf && (
+              <div>
+                <span className="text-gray-500">CPF do Responsável:</span>
+                <p className="font-medium">{formatCPF(dados.responsibleCpf)}</p>
+              </div>
+            )}
           </div>
         </div>
-        
-        <div className="pt-4 border-t">
-          <p className="text-sm font-medium text-gray-500">Certidão</p>
-          <p className="font-semibold">
-            {dados.certificateType || '-'}
-            {' - '}
-            {dados.certificateModel === 'NOVO' ? 'Modelo Novo' : 
-             dados.certificateModel === 'ANTIGO' ? 'Modelo Antigo' : '-'}
-          </p>
+
+        {/* Seção 2: Documentação */}
+        <div className="border rounded-lg p-4 bg-gray-50">
+          <h4 className="font-semibold text-[#002776] mb-3 border-b pb-2">2. Documentação</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div>
+              <span className="text-gray-500">CPF:</span>
+              <p className="font-medium">{formatCPF(selectedForm.cpf)}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">RG:</span>
+              <p className="font-medium">{dados.rg || '-'}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Órgão Expedidor:</span>
+              <p className="font-medium">{dados.rgIssuer || '-'}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Data Expedição RG:</span>
+              <p className="font-medium">{formatDateForm(dados.rgIssueDate || '')}</p>
+            </div>
+            <div className="sm:col-span-2">
+              <span className="text-gray-500">Passaporte Anterior:</span>
+              <p className="font-medium">{dados.previousPassport === 'SIM' ? 'Sim' : dados.previousPassport === 'NAO' ? 'Não' : '-'}</p>
+            </div>
+            {dados.previousPassport === 'SIM' && (
+              <>
+                <div>
+                  <span className="text-gray-500">Série Passaporte:</span>
+                  <p className="font-medium">{dados.passportSeries || '-'}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Número Passaporte:</span>
+                  <p className="font-medium">{dados.passportNumber || '-'}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Situação:</span>
+                  <p className="font-medium">{dados.passportStatus || '-'}</p>
+                </div>
+              </>
+            )}
+          </div>
         </div>
-        
-        {dados.previousPassport === 'SIM' && (
-          <div className="pt-4 border-t">
-            <p className="text-sm font-medium text-gray-500 mb-2">Passaporte Anterior</p>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <p className="text-xs text-gray-400">Série</p>
-                <p>{dados.passportSeries || '-'}</p>
+
+        {/* Seção 3: Certidão */}
+        <div className="border rounded-lg p-4 bg-gray-50">
+          <h4 className="font-semibold text-[#002776] mb-3 border-b pb-2">3. Certidão</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div>
+              <span className="text-gray-500">Tipo:</span>
+              <p className="font-medium">{dados.certificateType || '-'}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Modelo:</span>
+              <p className="font-medium">{dados.certificateModel === 'NOVO' ? 'Modelo Novo' : dados.certificateModel === 'ANTIGO' ? 'Modelo Antigo' : '-'}</p>
+            </div>
+            {dados.certificateModel === 'NOVO' && (
+              <div className="sm:col-span-2 break-all">
+                <span className="text-gray-500">Número Certidão:</span>
+                <p className="font-medium">{dados.certificateNumberNew || '-'}</p>
               </div>
-              <div>
-                <p className="text-xs text-gray-400">Número</p>
-                <p>{dados.passportNumber || '-'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Situação</p>
-                <p>{dados.passportStatus || '-'}</p>
-              </div>
+            )}
+            {dados.certificateModel === 'ANTIGO' && (
+              <>
+                <div>
+                  <span className="text-gray-500">Número:</span>
+                  <p className="font-medium">{dados.certificateNumberOld || '-'}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Livro:</span>
+                  <p className="font-medium">{dados.certificateBook || '-'}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Folha:</span>
+                  <p className="font-medium">{dados.certificatePage || '-'}</p>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Seção 4: Contato e Endereço */}
+        <div className="border rounded-lg p-4 bg-gray-50">
+          <h4 className="font-semibold text-[#002776] mb-3 border-b pb-2">4. Contato e Endereço</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div className="sm:col-span-2 break-words">
+              <span className="text-gray-500">Endereço:</span>
+              <p className="font-medium">{dados.address || '-'}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Bairro:</span>
+              <p className="font-medium">{dados.neighborhood || '-'}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Cidade/UF:</span>
+              <p className="font-medium">{dados.city || '-'}{dados.state ? '/' + dados.state : ''}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">CEP:</span>
+              <p className="font-medium">{formatZipCode(dados.zipCode)}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Telefone:</span>
+              <p className="font-medium">{formatPhone(dados.phone)}</p>
+            </div>
+            <div className="sm:col-span-2 break-all">
+              <span className="text-gray-500">E-mail:</span>
+              <p className="font-medium">{dados.email || '-'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Seção 5: Informações Profissionais */}
+        <div className="border rounded-lg p-4 bg-gray-50">
+          <h4 className="font-semibold text-[#002776] mb-3 border-b pb-2">5. Informações Profissionais</h4>
+          <div className="text-sm">
+            <span className="text-gray-500">Profissão:</span>
+            <p className="font-medium">{dados.profession || '-'}</p>
+          </div>
+        </div>
+
+        {/* Seção 6: Autorização de Viagem (se houver) */}
+        {dados.travelAuthorization && (
+          <div className="border rounded-lg p-4 bg-gray-50">
+            <h4 className="font-semibold text-[#002776] mb-3 border-b pb-2">6. Autorização de Viagem (Menor)</h4>
+            <div className="text-sm">
+              <span className="text-gray-500">Tipo:</span>
+              <p className="font-medium">{dados.travelAuthorization}</p>
             </div>
           </div>
         )}
+
+        {/* Seção 7: Detalhes da Emissão */}
+        <div className="border rounded-lg p-4 bg-gray-50">
+          <h4 className="font-semibold text-[#002776] mb-3 border-b pb-2">7. Detalhes da Emissão</h4>
+          <div className="text-sm">
+            <span className="text-gray-500">Tipo de Passaporte:</span>
+            <p className="font-medium">{dados.passportType || '-'}</p>
+          </div>
+        </div>
       </div>
     );
   };

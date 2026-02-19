@@ -184,15 +184,28 @@ export default function FormularioPage() {
     setShowReview(true);
   };
 
+  const cleanDataForStorage = (data: FormData) => {
+    return {
+      ...data,
+      cpf: data.cpf.replace(/\D/g, ''),
+      responsibleCpf: data.responsibleCpf ? data.responsibleCpf.replace(/\D/g, '') : '',
+      zipCode: data.zipCode ? data.zipCode.replace(/\D/g, '') : '',
+      phone: data.phone ? data.phone.replace(/\D/g, '') : '',
+    };
+  };
+
   const handleConfirmSubmit = async () => {
     setSubmitting(true);
 
     try {
+      // Clean data before saving (remove formatting from numbers)
+      const cleanedData = cleanDataForStorage(formData);
+      
       // Save to Firestore
       await addDoc(collection(db, 'formularios'), {
         userId: user?.uid,
         cpf: userData?.cpf,
-        dados: formData,
+        dados: cleanedData,
         createdAt: serverTimestamp(),
         status: 'pendente'
       });
