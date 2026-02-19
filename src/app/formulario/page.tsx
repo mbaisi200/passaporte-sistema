@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc, query, where, getDocs, orderBy, limit, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { 
   FileText, 
@@ -80,6 +80,8 @@ export default function FormularioPage() {
   const [success, setSuccess] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [loadingForm, setLoadingForm] = useState(true);
+  const [existingFormId, setExistingFormId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
@@ -125,19 +127,63 @@ export default function FormularioPage() {
       router.push('/login');
     }
     
-    // Check if user is blocked and pre-fill CPF
+    // Check if user is blocked, load existing form data
     if (!loading && user && userData?.cpf) {
-      const checkBlocked = async () => {
+      const checkUserStatus = async () => {
+        // Check if blocked
         const cpfDoc = await getDoc(doc(db, 'authorized_cpfs', userData.cpf));
         if (cpfDoc.exists() && cpfDoc.data().blocked) {
           setBlocked(true);
+          setLoadingForm(false);
+          return;
         }
+
+        // Check for existing form
+        const formsQuery = query(
+          collection(db, 'formularios'),
+          where('cpf', '==', userData.cpf),
+          limit(1)
+        );
+        
+        const formsSnapshot = await getDocs(formsQuery);
+        
+        if (!formsSnapshot.empty) {
+          const formDoc = formsSnapshot.docs[0];
+          const formData = formDoc.data();
+          
+          // If status is "processado", block access
+          if (formData.status === 'processado') {
+            setBlocked(true);
+            setLoadingForm(false);
+            return;
+          }
+          
+          // If status is "pendente", load the existing data
+          if (formData.status === 'pendente' && formData.dados) {
+            setExistingFormId(formDoc.id);
+            const d = formData.dados;
+            
+            // Format numbers for display
+            const formattedData: FormData = {
+              ...d,
+              cpf: d.cpf ? d.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '',
+              responsibleCpf: d.responsibleCpf ? d.responsibleCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '',
+              zipCode: d.zipCode ? d.zipCode.replace(/(\d{5})(\d{3})/, '$1-$2') : '',
+              phone: d.phone ? (d.phone.length === 11 ? d.phone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : d.phone.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')) : '',
+            };
+            
+            setFormData(formattedData);
+          }
+        }
+        
+        setLoadingForm(false);
       };
-      checkBlocked();
       
-      // Pre-fill CPF from logged in user
+      checkUserStatus();
+      
+      // Pre-fill CPF from logged in user if not already loaded
       const formattedCpf = userData.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-      setFormData(prev => ({ ...prev, cpf: formattedCpf }));
+      setFormData(prev => prev.cpf ? prev : { ...prev, cpf: formattedCpf });
     }
   }, [user, loading, router, userData]);
 
@@ -201,14 +247,22 @@ export default function FormularioPage() {
       // Clean data before saving (remove formatting from numbers)
       const cleanedData = cleanDataForStorage(formData);
       
-      // Save to Firestore
-      await addDoc(collection(db, 'formularios'), {
-        userId: user?.uid,
-        cpf: userData?.cpf,
-        dados: cleanedData,
-        createdAt: serverTimestamp(),
-        status: 'pendente'
-      });
+      if (existingFormId) {
+        // Update existing form
+        await updateDoc(doc(db, 'formularios', existingFormId), {
+          dados: cleanedData,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        // Create new form
+        await addDoc(collection(db, 'formularios'), {
+          userId: user?.uid,
+          cpf: userData?.cpf,
+          dados: cleanedData,
+          createdAt: serverTimestamp(),
+          status: 'pendente'
+        });
+      }
 
       setSuccess(true);
       setShowReview(false);
@@ -220,12 +274,12 @@ export default function FormularioPage() {
     }
   };
 
-  if (loading) {
+  if (loading || loadingForm) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#009639] mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando...</p>
+          <p className="mt-4 text-gray-600">Carregando seus dados...</p>
         </div>
       </div>
     );
