@@ -12,8 +12,16 @@ import {
   FileText, 
   UserPlus, 
   LogOut,
-  BarChart3
+  BarChart3,
+  Calendar
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function AdminDashboard() {
   const { user, userData, loading, signOut } = useAuth();
@@ -24,12 +32,47 @@ export default function AdminDashboard() {
     totalForms: 0,
     pendingForms: 0
   });
+  const [periodFilter, setPeriodFilter] = useState('todos');
 
   useEffect(() => {
     if (!loading && (!user || userData?.role !== 'admin')) {
       router.push('/login');
     }
   }, [user, userData, loading, router]);
+
+  const filterByPeriod = (data: Record<string, unknown>[], dateField: string) => {
+    if (periodFilter === 'todos') return data;
+    
+    const now = new Date();
+    let startDate: Date;
+    
+    switch (periodFilter) {
+      case 'hoje':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'semana':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'mes':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'trimestre':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+        break;
+      case 'ano':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        break;
+      default:
+        return data;
+    }
+    
+    return data.filter((item) => {
+      const timestamp = item[dateField] as { seconds: number } | null;
+      if (!timestamp) return false;
+      const itemDate = new Date(timestamp.seconds * 1000);
+      return itemDate >= startDate;
+    });
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -42,17 +85,21 @@ export default function AdminDashboard() {
         const formsSnapshot = await getDocs(collection(db, 'formularios'));
         const formsData = formsSnapshot.docs.map(doc => doc.data());
         
+        // Apply period filter
+        const filteredCpfs = filterByPeriod(cpfsData, 'addedAt');
+        const filteredForms = filterByPeriod(formsData, 'createdAt');
+        
         setStats({
-          totalCpfs: cpfsData.length,
-          activeAccounts: cpfsData.filter(c => c.hasAccount).length,
-          totalForms: formsData.length,
-          pendingForms: formsData.filter(f => f.status === 'pendente').length
+          totalCpfs: filteredCpfs.length,
+          activeAccounts: filteredCpfs.filter(c => c.hasAccount).length,
+          totalForms: filteredForms.length,
+          pendingForms: filteredForms.filter(f => f.status === 'pendente').length
         });
       }
     };
 
     fetchStats();
-  }, [userData]);
+  }, [userData, periodFilter]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -127,7 +174,25 @@ export default function AdminDashboard() {
 
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold text-[#623AA2] mb-6">Visão Geral</h2>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+          <h2 className="text-2xl font-bold text-[#623AA2]">Visão Geral</h2>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-gray-500" />
+            <Select value={periodFilter} onValueChange={setPeriodFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Selecionar período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="hoje">Hoje</SelectItem>
+                <SelectItem value="semana">Última Semana</SelectItem>
+                <SelectItem value="mes">Este Mês</SelectItem>
+                <SelectItem value="trimestre">Último Trimestre</SelectItem>
+                <SelectItem value="ano">Este Ano</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="hover:shadow-lg transition-shadow">
