@@ -62,7 +62,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#009639]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#623AA2]"></div>
       </div>
     );
   }
@@ -74,19 +74,19 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <header className="bg-[#002776] text-white shadow-lg">
+      <header className="bg-gradient-to-r from-[#623AA2] to-[#F97794] text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                <span className="text-[#002776] font-bold">SB</span>
+                <span className="text-[#623AA2] font-bold">SB</span>
               </div>
               <div>
                 <h1 className="text-xl font-bold">Painel Administrativo</h1>
-                <p className="text-sm text-blue-200">SB Viagens e Turismo</p>
+                <p className="text-sm text-white/80">SB Viagens e Turismo</p>
               </div>
             </div>
-            <Button variant="outline" onClick={handleSignOut} className="text-white border-white hover:bg-white hover:text-[#002776]">
+            <Button variant="outline" onClick={handleSignOut} className="text-white border-white hover:bg-white hover:text-[#623AA2]">
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </Button>
@@ -100,14 +100,14 @@ export default function AdminDashboard() {
           <div className="flex gap-4">
             <Button
               variant="ghost"
-              className="border-b-2 border-[#009639] text-[#002776]"
+              className="border-b-2 border-[#F97794] text-[#623AA2]"
             >
               <BarChart3 className="mr-2 h-4 w-4" />
               Dashboard
             </Button>
             <Button
               variant="ghost"
-              className="text-gray-600 hover:text-[#002776]"
+              className="text-gray-600 hover:text-[#623AA2]"
               onClick={() => router.push('/admin/cpfs')}
             >
               <UserPlus className="mr-2 h-4 w-4" />
@@ -115,7 +115,7 @@ export default function AdminDashboard() {
             </Button>
             <Button
               variant="ghost"
-              className="text-gray-600 hover:text-[#002776]"
+              className="text-gray-600 hover:text-[#623AA2]"
               onClick={() => router.push('/admin/formularios')}
             >
               <FileText className="mr-2 h-4 w-4" />
@@ -127,7 +127,7 @@ export default function AdminDashboard() {
 
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold text-[#002776] mb-6">Visão Geral</h2>
+        <h2 className="text-2xl font-bold text-[#623AA2] mb-6">Visão Geral</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="hover:shadow-lg transition-shadow">
@@ -135,10 +135,10 @@ export default function AdminDashboard() {
               <CardTitle className="text-sm font-medium text-gray-600">
                 CPFs Autorizados
               </CardTitle>
-              <Users className="h-5 w-5 text-[#002776]" />
+              <Users className="h-5 w-5 text-[#623AA2]" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-[#002776]">{stats.totalCpfs}</div>
+              <div className="text-3xl font-bold text-[#623AA2]">{stats.totalCpfs}</div>
               <p className="text-xs text-gray-500 mt-1">Total de CPFs no sistema</p>
             </CardContent>
           </Card>
@@ -148,10 +148,10 @@ export default function AdminDashboard() {
               <CardTitle className="text-sm font-medium text-gray-600">
                 Contas Ativas
               </CardTitle>
-              <UserPlus className="h-5 w-5 text-[#009639]" />
+              <UserPlus className="h-5 w-5 text-[#F97794]" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-[#009639]">{stats.activeAccounts}</div>
+              <div className="text-3xl font-bold text-[#F97794]">{stats.activeAccounts}</div>
               <p className="text-xs text-gray-500 mt-1">Usuários registrados</p>
             </CardContent>
           </Card>
@@ -161,10 +161,10 @@ export default function AdminDashboard() {
               <CardTitle className="text-sm font-medium text-gray-600">
                 Formulários Enviados
               </CardTitle>
-              <FileText className="h-5 w-5 text-[#fedf00]" />
+              <FileText className="h-5 w-5 text-[#623AA2]" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-[#002776]">{stats.totalForms}</div>
+              <div className="text-3xl font-bold text-[#623AA2]">{stats.totalForms}</div>
               <p className="text-xs text-gray-500 mt-1">Total de formulários</p>
             </CardContent>
           </Card>
@@ -185,15 +185,15 @@ export default function AdminDashboard() {
 
         {/* Quick Actions */}
         <div className="mt-8">
-          <h3 className="text-lg font-semibold text-[#002776] mb-4">Ações Rápidas</h3>
+          <h3 className="text-lg font-semibold text-[#623AA2] mb-4">Ações Rápidas</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/admin/cpfs')}>
               <CardContent className="flex items-center gap-4 p-6">
-                <div className="w-12 h-12 bg-[#009639] rounded-full flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-r from-[#623AA2] to-[#F97794] rounded-full flex items-center justify-center">
                   <UserPlus className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-[#002776]">Adicionar Novo CPF</h4>
+                  <h4 className="font-semibold text-[#623AA2]">Adicionar Novo CPF</h4>
                   <p className="text-sm text-gray-500">Autorize um novo cliente</p>
                 </div>
               </CardContent>
@@ -201,11 +201,11 @@ export default function AdminDashboard() {
             
             <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/admin/formularios')}>
               <CardContent className="flex items-center gap-4 p-6">
-                <div className="w-12 h-12 bg-[#002776] rounded-full flex items-center justify-center">
+                <div className="w-12 h-12 bg-[#623AA2] rounded-full flex items-center justify-center">
                   <FileText className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-[#002776]">Ver Formulários</h4>
+                  <h4 className="font-semibold text-[#623AA2]">Ver Formulários</h4>
                   <p className="text-sm text-gray-500">Consulte formulários enviados</p>
                 </div>
               </CardContent>

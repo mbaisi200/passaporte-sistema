@@ -59,6 +59,7 @@ interface AuthorizedCpf {
   email: string;
   userId: string;
   blocked: boolean;
+  clientName?: string;
 }
 
 const DEFAULT_PASSWORD = '123456';
@@ -108,8 +109,29 @@ export default function ManageCpfsPage() {
         id: doc.id,
         ...doc.data()
       })) as AuthorizedCpf[];
-      setCpfs(data);
-      setFilteredCpfs(data);
+      
+      // Fetch client names from formularios collection
+      const formulariosQ = query(collection(db, 'formularios'));
+      const formulariosSnapshot = await getDocs(formulariosQ);
+      const formulariosMap = new Map<string, string>();
+      
+      formulariosSnapshot.docs.forEach(doc => {
+        const formData = doc.data();
+        const cpf = doc.id;
+        const clientCpf = formData.cpf?.replace(/\D/g, '');
+        if (clientCpf && formData.dados?.fullName) {
+          formulariosMap.set(clientCpf, formData.dados.fullName);
+        }
+      });
+      
+      // Merge client names into CPFs data
+      const dataWithNames = data.map(cpfData => ({
+        ...cpfData,
+        clientName: formulariosMap.get(cpfData.id) || undefined
+      }));
+      
+      setCpfs(dataWithNames);
+      setFilteredCpfs(dataWithNames);
     } catch (error) {
       console.error('Erro ao buscar CPFs:', error);
     }
@@ -283,19 +305,19 @@ export default function ManageCpfsPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <header className="bg-[#002776] text-white shadow-lg">
+      <header className="bg-gradient-to-r from-[#623AA2] to-[#F97794] text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                <span className="text-[#002776] font-bold">SB</span>
+                <span className="text-[#623AA2] font-bold">SB</span>
               </div>
               <div>
                 <h1 className="text-xl font-bold">Gerenciar CPFs</h1>
-                <p className="text-sm text-blue-200">SB Viagens e Turismo</p>
+                <p className="text-sm text-white/80">SB Viagens e Turismo</p>
               </div>
             </div>
-            <Button variant="outline" onClick={handleSignOut} className="text-white border-white hover:bg-white hover:text-[#002776]">
+            <Button variant="outline" onClick={handleSignOut} className="text-white border-white hover:bg-white hover:text-[#623AA2]">
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </Button>
@@ -309,7 +331,7 @@ export default function ManageCpfsPage() {
           <div className="flex gap-4">
             <Button
               variant="ghost"
-              className="text-gray-600 hover:text-[#002776]"
+              className="text-gray-600 hover:text-[#623AA2]"
               onClick={() => router.push('/admin')}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -317,14 +339,14 @@ export default function ManageCpfsPage() {
             </Button>
             <Button
               variant="ghost"
-              className="border-b-2 border-[#009639] text-[#002776]"
+              className="border-b-2 border-[#F97794] text-[#623AA2]"
             >
               <UserPlus className="mr-2 h-4 w-4" />
               Gerenciar CPFs
             </Button>
             <Button
               variant="ghost"
-              className="text-gray-600 hover:text-[#002776]"
+              className="text-gray-600 hover:text-[#623AA2]"
               onClick={() => router.push('/admin/formularios')}
             >
               Formulários
@@ -359,7 +381,7 @@ export default function ManageCpfsPage() {
         {/* Add CPF Card */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-[#002776]">
+            <CardTitle className="flex items-center gap-2 text-[#623AA2]">
               <UserPlus className="h-5 w-5" />
               Cadastrar Novo Cliente
             </CardTitle>
@@ -392,7 +414,7 @@ export default function ManageCpfsPage() {
               <div className="flex items-end">
                 <Button
                   onClick={handleAddCpf}
-                  className="w-full bg-[#009639] hover:bg-[#007a2f]"
+                  className="w-full bg-gradient-to-r from-[#F97794] to-[#623AA2] hover:opacity-90"
                   disabled={submitting}
                 >
                   {submitting ? (
@@ -413,7 +435,7 @@ export default function ManageCpfsPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-[#002776]">Clientes Cadastrados ({cpfs.length})</CardTitle>
+              <CardTitle className="text-[#623AA2]">Clientes Cadastrados ({cpfs.length})</CardTitle>
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -430,25 +452,27 @@ export default function ManageCpfsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>CPF</TableHead>
+                    <TableHead className="w-[180px]">Nome</TableHead>
+                    <TableHead className="w-[140px]">CPF</TableHead>
                     <TableHead>Login</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Data Cadastro</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    <TableHead className="w-[100px]">Status</TableHead>
+                    <TableHead className="w-[120px]">Cadastro</TableHead>
+                    <TableHead className="text-right w-[100px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredCpfs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                         Nenhum cliente cadastrado
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredCpfs.map((cpf) => (
                       <TableRow key={cpf.id}>
-                        <TableCell className="font-mono">{formatCPF(cpf.id)}</TableCell>
-                        <TableCell className="text-sm">{cpf.email || generateEmailFromCPF(cpf.id)}</TableCell>
+                        <TableCell className="font-medium truncate max-w-[180px]">{cpf.clientName || '-'}</TableCell>
+                        <TableCell className="font-mono text-sm">{formatCPF(cpf.id)}</TableCell>
+                        <TableCell className="text-sm truncate max-w-[150px]">{cpf.email || generateEmailFromCPF(cpf.id)}</TableCell>
                         <TableCell>
                           {cpf.blocked ? (
                             <span className="inline-flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded">

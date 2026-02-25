@@ -30,6 +30,7 @@ import {
 import {
   collection,
   updateDoc,
+  deleteDoc,
   doc,
   query,
   orderBy,
@@ -44,7 +45,8 @@ import {
   Eye,
   CheckCircle,
   Clock,
-  Download
+  Download,
+  Trash2
 } from 'lucide-react';
 
 interface Formulario {
@@ -69,6 +71,8 @@ export default function FormulariosPage() {
   const [statusFilter, setStatusFilter] = useState('todos');
   const [selectedForm, setSelectedForm] = useState<Formulario | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [formToDelete, setFormToDelete] = useState<Formulario | null>(null);
 
   useEffect(() => {
     if (!loading && (!user || userData?.role !== 'admin')) {
@@ -132,6 +136,18 @@ export default function FormulariosPage() {
       }
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
+    }
+  };
+
+  const handleDeleteForm = async () => {
+    if (!formToDelete) return;
+    
+    try {
+      await deleteDoc(doc(db, 'formularios', formToDelete.id));
+      setDeleteDialogOpen(false);
+      setFormToDelete(null);
+    } catch (error) {
+      console.error('Erro ao excluir formulário:', error);
     }
   };
 
@@ -472,7 +488,7 @@ export default function FormulariosPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#009639]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#623AA2]"></div>
       </div>
     );
   }
@@ -484,19 +500,19 @@ export default function FormulariosPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <header className="bg-[#002776] text-white shadow-lg">
+      <header className="bg-gradient-to-r from-[#623AA2] to-[#F97794] text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                <span className="text-[#002776] font-bold">SB</span>
+                <span className="text-[#623AA2] font-bold">SB</span>
               </div>
               <div>
                 <h1 className="text-xl font-bold">Formulários Recebidos</h1>
-                <p className="text-sm text-blue-200">SB Viagens e Turismo</p>
+                <p className="text-sm text-white/80">SB Viagens e Turismo</p>
               </div>
             </div>
-            <Button variant="outline" onClick={handleSignOut} className="text-white border-white hover:bg-white hover:text-[#002776]">
+            <Button variant="outline" onClick={handleSignOut} className="text-white border-white hover:bg-white hover:text-[#623AA2]">
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </Button>
@@ -510,7 +526,7 @@ export default function FormulariosPage() {
           <div className="flex gap-4">
             <Button
               variant="ghost"
-              className="text-gray-600 hover:text-[#002776]"
+              className="text-gray-600 hover:text-[#623AA2]"
               onClick={() => router.push('/admin')}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -518,14 +534,14 @@ export default function FormulariosPage() {
             </Button>
             <Button
               variant="ghost"
-              className="text-gray-600 hover:text-[#002776]"
+              className="text-gray-600 hover:text-[#623AA2]"
               onClick={() => router.push('/admin/cpfs')}
             >
               Gerenciar CPFs
             </Button>
             <Button
               variant="ghost"
-              className="border-b-2 border-[#009639] text-[#002776]"
+              className="border-b-2 border-[#F97794] text-[#623AA2]"
             >
               <FileText className="mr-2 h-4 w-4" />
               Formulários
@@ -539,7 +555,7 @@ export default function FormulariosPage() {
         <Card>
           <CardHeader>
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <CardTitle className="text-[#002776]">
+              <CardTitle className="text-[#623AA2]">
                 Formulários ({formularios.length})
               </CardTitle>
               <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
@@ -641,6 +657,18 @@ export default function FormulariosPage() {
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setFormToDelete(form);
+                                setDeleteDialogOpen(true);
+                              }}
+                              title="Excluir formulário"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -657,13 +685,13 @@ export default function FormulariosPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-[#002776]">Detalhes do Formulário</DialogTitle>
+            <DialogTitle className="text-[#623AA2]">Detalhes do Formulário</DialogTitle>
           </DialogHeader>
           {renderFormDetails()}
           <div className="flex justify-end gap-2 pt-4 border-t">
             {selectedForm && (
               <Button 
-                className="bg-[#009639] hover:bg-[#007a2f]"
+                className="bg-gradient-to-r from-[#F97794] to-[#623AA2] hover:opacity-90"
                 onClick={() => {
                   generateTxtFile(selectedForm);
                 }}
@@ -674,6 +702,33 @@ export default function FormulariosPage() {
             )}
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Fechar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-[#623AA2]">Confirmar Exclusão</DialogTitle>
+          </DialogHeader>
+          <p className="text-gray-600">
+            Tem certeza que deseja excluir o formulário de <strong>{formToDelete?.dados?.fullName || 'Cliente'}</strong>?
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Esta ação não pode ser desfeita.
+          </p>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteForm}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir
             </Button>
           </div>
         </DialogContent>
