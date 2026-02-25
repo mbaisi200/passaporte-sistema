@@ -130,8 +130,20 @@ export default function ManageCpfsPage() {
         clientName: formulariosMap.get(cpfData.id) || undefined
       }));
       
-      setCpfs(dataWithNames);
-      setFilteredCpfs(dataWithNames);
+      // Sort: Active first (by date desc), then Blocked (by date desc)
+      const sortedData = dataWithNames.sort((a, b) => {
+        // If one is blocked and other is not, show active first
+        if (a.blocked !== b.blocked) {
+          return a.blocked ? 1 : -1;
+        }
+        // Both have same blocked status, sort by date desc
+        const dateA = a.addedAt?.seconds || 0;
+        const dateB = b.addedAt?.seconds || 0;
+        return dateB - dateA;
+      });
+      
+      setCpfs(sortedData);
+      setFilteredCpfs(sortedData);
     } catch (error) {
       console.error('Erro ao buscar CPFs:', error);
     }
