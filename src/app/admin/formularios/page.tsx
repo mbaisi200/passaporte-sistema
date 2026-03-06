@@ -88,13 +88,15 @@ export default function FormulariosPage() {
           ...doc.data()
         })) as Formulario[];
 
-        // Debug: mostrar status de cada formulário
-        console.log('=== FORMULÁRIOS ANTES DA ORDENAÇÃO ===');
-        data.forEach(f => console.log(`Nome: ${f.dados?.fullName}, Status: "${f.status}"`));
+        // Normalizar status para minúsculo
+        data.forEach(f => {
+          if (f.status) {
+            f.status = f.status.toLowerCase().trim();
+          }
+        });
 
         // Ordenar: pendentes primeiro, depois processados
         data.sort((a, b) => {
-          // Normalizar status para comparação (lowercase e trim)
           const statusA = (a.status || '').toLowerCase().trim();
           const statusB = (b.status || '').toLowerCase().trim();
 
@@ -105,9 +107,6 @@ export default function FormulariosPage() {
           if (!aIsPendente && bIsPendente) return 1;
           return 0;
         });
-
-        console.log('=== FORMULÁRIOS DEPOIS DA ORDENAÇÃO ===');
-        data.forEach(f => console.log(`Nome: ${f.dados?.fullName}, Status: "${f.status}"`));
 
         setFormularios(data);
       });
@@ -534,7 +533,11 @@ export default function FormulariosPage() {
                 <p className="text-sm text-white/80">SB Viagens e Turismo</p>
               </div>
             </div>
-            <Button variant="outline" onClick={handleSignOut} className="text-white border-white hover:bg-white hover:text-[#623AA2]">
+            <Button 
+              variant="outline" 
+              onClick={handleSignOut} 
+              className="bg-white/20 text-white border-white hover:bg-white hover:text-[#623AA2] font-medium"
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </Button>
