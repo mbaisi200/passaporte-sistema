@@ -95,7 +95,8 @@ export default function FormulariosPage() {
   }, [user, userData, loading, router]);
 
   const filteredFormularios = useMemo(() => {
-    let filtered = formularios;
+    // Criar cópia do array para não mutar o original
+    let filtered = [...formularios];
 
     if (searchTerm) {
       filtered = filtered.filter(f =>
@@ -110,7 +111,7 @@ export default function FormulariosPage() {
     }
 
     // Ordenar: pendentes primeiro, depois processados
-    filtered = filtered.sort((a, b) => {
+    filtered.sort((a, b) => {
       if (a.status === 'pendente' && b.status !== 'pendente') return -1;
       if (a.status !== 'pendente' && b.status === 'pendente') return 1;
       return 0;
