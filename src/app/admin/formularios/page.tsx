@@ -87,6 +87,17 @@ export default function FormulariosPage() {
           id: doc.id,
           ...doc.data()
         })) as Formulario[];
+
+        // Ordenar: pendentes primeiro, depois processados
+        data.sort((a, b) => {
+          const aIsPendente = !a.status || a.status === '' || a.status === 'pendente';
+          const bIsPendente = !b.status || b.status === '' || b.status === 'pendente';
+
+          if (aIsPendente && !bIsPendente) return -1;
+          if (!aIsPendente && bIsPendente) return 1;
+          return 0;
+        });
+
         setFormularios(data);
       });
 
@@ -95,7 +106,6 @@ export default function FormulariosPage() {
   }, [user, userData, loading, router]);
 
   const filteredFormularios = useMemo(() => {
-    // Criar cópia do array para não mutar o original
     let filtered = [...formularios];
 
     if (searchTerm) {
@@ -109,17 +119,6 @@ export default function FormulariosPage() {
     if (statusFilter !== 'todos') {
       filtered = filtered.filter(f => f.status === statusFilter);
     }
-
-    // Ordenar: pendentes primeiro, depois processados
-    // Considera como pendente: status === 'pendente', null, undefined ou vazio
-    filtered.sort((a, b) => {
-      const aIsPendente = !a.status || a.status === '' || a.status === 'pendente';
-      const bIsPendente = !b.status || b.status === '' || b.status === 'pendente';
-
-      if (aIsPendente && !bIsPendente) return -1;
-      if (!aIsPendente && bIsPendente) return 1;
-      return 0;
-    });
 
     return filtered;
   }, [searchTerm, statusFilter, formularios]);
