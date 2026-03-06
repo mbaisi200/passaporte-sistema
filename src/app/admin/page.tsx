@@ -133,7 +133,11 @@ export default function AdminDashboard() {
                 <p className="text-sm text-white/80">SB Viagens e Turismo</p>
               </div>
             </div>
-            <Button variant="outline" onClick={handleSignOut} className="text-white border-white hover:bg-white hover:text-[#623AA2]">
+            <Button 
+              variant="outline" 
+              onClick={handleSignOut} 
+              className="bg-white/20 text-white border-white hover:bg-white hover:text-[#623AA2] font-medium"
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </Button>

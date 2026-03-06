@@ -87,6 +87,27 @@ export default function FormulariosPage() {
           id: doc.id,
           ...doc.data()
         })) as Formulario[];
+
+        // Normalizar status para minúsculo
+        data.forEach(f => {
+          if (f.status) {
+            f.status = f.status.toLowerCase().trim();
+          }
+        });
+
+        // Ordenar: pendentes primeiro, depois processados
+        data.sort((a, b) => {
+          const statusA = (a.status || '').toLowerCase().trim();
+          const statusB = (b.status || '').toLowerCase().trim();
+
+          const aIsPendente = statusA === '' || statusA === 'pendente';
+          const bIsPendente = statusB === '' || statusB === 'pendente';
+
+          if (aIsPendente && !bIsPendente) return -1;
+          if (!aIsPendente && bIsPendente) return 1;
+          return 0;
+        });
+
         setFormularios(data);
       });
 
@@ -95,20 +116,20 @@ export default function FormulariosPage() {
   }, [user, userData, loading, router]);
 
   const filteredFormularios = useMemo(() => {
-    let filtered = formularios;
-    
+    let filtered = [...formularios];
+
     if (searchTerm) {
-      filtered = filtered.filter(f => 
+      filtered = filtered.filter(f =>
         f.cpf?.includes(searchTerm.replace(/\D/g, '')) ||
         f.dados?.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         f.dados?.email?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    
+
     if (statusFilter !== 'todos') {
       filtered = filtered.filter(f => f.status === statusFilter);
     }
-    
+
     return filtered;
   }, [searchTerm, statusFilter, formularios]);
 
@@ -512,7 +533,11 @@ export default function FormulariosPage() {
                 <p className="text-sm text-white/80">SB Viagens e Turismo</p>
               </div>
             </div>
-            <Button variant="outline" onClick={handleSignOut} className="text-white border-white hover:bg-white hover:text-[#623AA2]">
+            <Button 
+              variant="outline" 
+              onClick={handleSignOut} 
+              className="bg-white/20 text-white border-white hover:bg-white hover:text-[#623AA2] font-medium"
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </Button>

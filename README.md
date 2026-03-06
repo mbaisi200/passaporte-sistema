@@ -1,136 +1,141 @@
-# Sistema de Emissão de Passaporte Brasileiro
+# 🚀 Welcome to Z.ai Code Scaffold
 
-Sistema completo para coleta de dados para emissão de passaporte brasileiro, com autenticação via Firebase e painel administrativo.
+A modern, production-ready web application scaffold powered by cutting-edge technologies, designed to accelerate your development with [Z.ai](https://chat.z.ai)'s AI-powered coding assistance.
 
-## 🚀 Funcionalidades
+## ✨ Technology Stack
 
-### Para Usuários
-- **Primeiro Acesso**: Cadastro com CPF autorizado
-- **Login**: Acesso ao sistema com email e senha
-- **Formulário de Passaporte**: Preenchimento completo com todos os dados necessários
-- **Geração de TXT**: Download automático do arquivo com os dados formatados
+This scaffold provides a robust foundation built with:
 
-### Para Administradores
-- **Dashboard**: Visão geral com estatísticas
-- **Gerenciar CPFs**: Adicionar/remover CPFs autorizados
-- **Visualizar Formulários**: Acompanhar formulários enviados
-- **Status**: Atualizar status dos formulários (pendente/processado)
+### 🎯 Core Framework
+- **⚡ Next.js 16** - The React framework for production with App Router
+- **📘 TypeScript 5** - Type-safe JavaScript for better developer experience
+- **🎨 Tailwind CSS 4** - Utility-first CSS framework for rapid UI development
 
-## 🛠️ Tecnologias
+### 🧩 UI Components & Styling
+- **🧩 shadcn/ui** - High-quality, accessible components built on Radix UI
+- **🎯 Lucide React** - Beautiful & consistent icon library
+- **🌈 Framer Motion** - Production-ready motion library for React
+- **🎨 Next Themes** - Perfect dark mode in 2 lines of code
 
-- **Next.js 15** - Framework React
-- **TypeScript** - Tipagem estática
-- **Firebase** - Autenticação e Banco de Dados
-- **Tailwind CSS** - Estilização
-- **shadcn/ui** - Componentes UI
+### 📋 Forms & Validation
+- **🎣 React Hook Form** - Performant forms with easy validation
+- **✅ Zod** - TypeScript-first schema validation
 
-## 📋 Pré-requisitos
+### 🔄 State Management & Data Fetching
+- **🐻 Zustand** - Simple, scalable state management
+- **🔄 TanStack Query** - Powerful data synchronization for React
+- **🌐 Fetch** - Promise-based HTTP request
 
-- Node.js 18+
-- Conta no Firebase
+### 🗄️ Database & Backend
+- **🗄️ Prisma** - Next-generation TypeScript ORM
+- **🔐 NextAuth.js** - Complete open-source authentication solution
 
-## 🔧 Configuração
+### 🎨 Advanced UI Features
+- **📊 TanStack Table** - Headless UI for building tables and datagrids
+- **🖱️ DND Kit** - Modern drag and drop toolkit for React
+- **📊 Recharts** - Redefined chart library built with React and D3
+- **🖼️ Sharp** - High performance image processing
 
-1. Clone o repositório:
+### 🌍 Internationalization & Utilities
+- **🌍 Next Intl** - Internationalization library for Next.js
+- **📅 Date-fns** - Modern JavaScript date utility library
+- **🪝 ReactUse** - Collection of essential React hooks for modern development
+
+## 🎯 Why This Scaffold?
+
+- **🏎️ Fast Development** - Pre-configured tooling and best practices
+- **🎨 Beautiful UI** - Complete shadcn/ui component library with advanced interactions
+- **🔒 Type Safety** - Full TypeScript configuration with Zod validation
+- **📱 Responsive** - Mobile-first design principles with smooth animations
+- **🗄️ Database Ready** - Prisma ORM configured for rapid backend development
+- **🔐 Auth Included** - NextAuth.js for secure authentication flows
+- **📊 Data Visualization** - Charts, tables, and drag-and-drop functionality
+- **🌍 i18n Ready** - Multi-language support with Next Intl
+- **🚀 Production Ready** - Optimized build and deployment settings
+- **🤖 AI-Friendly** - Structured codebase perfect for AI assistance
+
+## 🚀 Quick Start
+
 ```bash
-git clone https://github.com/mbaisi200/passaporte-sistema.git
-cd passaporte-sistema
-```
-
-2. Instale as dependências:
-```bash
+# Install dependencies
 bun install
-```
 
-3. Configure as variáveis de ambiente (se necessário para Firebase Admin):
-```bash
-FIREBASE_PRIVATE_KEY="sua-chave-privada"
-```
-
-4. Execute o projeto:
-```bash
+# Start development server
 bun run dev
+
+# Build for production
+bun run build
+
+# Start production server
+bun start
 ```
 
-## 🔐 Acesso ao Sistema
+Open [http://localhost:3000](http://localhost:3000) to see your application running.
 
-### Admin
-- **Email**: admin@passaporte.com
-- **Senha**: Admin@123
+## 🤖 Powered by Z.ai
 
-### Usuários
-1. O administrador deve cadastrar o CPF no painel admin
-2. O usuário acessa a página de registro
-3. Informa CPF autorizado + email + senha
-4. Após cadastro, pode acessar o formulário
+This scaffold is optimized for use with [Z.ai](https://chat.z.ai) - your AI assistant for:
 
-## 📁 Estrutura do Projeto
+- **💻 Code Generation** - Generate components, pages, and features instantly
+- **🎨 UI Development** - Create beautiful interfaces with AI assistance  
+- **🔧 Bug Fixing** - Identify and resolve issues with intelligent suggestions
+- **📝 Documentation** - Auto-generate comprehensive documentation
+- **🚀 Optimization** - Performance improvements and best practices
+
+Ready to build something amazing? Start chatting with Z.ai at [chat.z.ai](https://chat.z.ai) and experience the future of AI-powered development!
+
+## 📁 Project Structure
 
 ```
 src/
-├── app/
-│   ├── page.tsx              # Landing page
-│   ├── login/page.tsx        # Página de login
-│   ├── register/page.tsx     # Página de cadastro
-│   ├── formulario/page.tsx   # Formulário de passaporte
-│   ├── admin/
-│   │   ├── page.tsx          # Dashboard admin
-│   │   ├── cpfs/page.tsx     # Gerenciar CPFs
-│   │   └── formularios/page.tsx # Ver formulários
-│   └── api/
-│       └── init-admin/route.ts # API para criar admin
-├── contexts/
-│   └── AuthContext.tsx       # Contexto de autenticação
-└── lib/
-    ├── firebase.ts           # Configuração Firebase
-    └── utils.ts              # Utilitários
+├── app/                 # Next.js App Router pages
+├── components/          # Reusable React components
+│   └── ui/             # shadcn/ui components
+├── hooks/              # Custom React hooks
+└── lib/                # Utility functions and configurations
 ```
 
-## 🗄️ Estrutura do Firestore
+## 🎨 Available Features & Components
 
-### Coleção: `users`
-```typescript
-{
-  uid: string;
-  email: string;
-  cpf: string;
-  role: 'admin' | 'user';
-  createdAt: Timestamp;
-}
-```
+This scaffold includes a comprehensive set of modern web development tools:
 
-### Coleção: `authorized_cpfs`
-```typescript
-{
-  cpf: string; // ID do documento (sem formatação)
-  addedBy: string;
-  addedAt: Timestamp;
-  hasAccount: boolean;
-  email: string;
-  userId: string;
-}
-```
+### 🧩 UI Components (shadcn/ui)
+- **Layout**: Card, Separator, Aspect Ratio, Resizable Panels
+- **Forms**: Input, Textarea, Select, Checkbox, Radio Group, Switch
+- **Feedback**: Alert, Toast (Sonner), Progress, Skeleton
+- **Navigation**: Breadcrumb, Menubar, Navigation Menu, Pagination
+- **Overlay**: Dialog, Sheet, Popover, Tooltip, Hover Card
+- **Data Display**: Badge, Avatar, Calendar
 
-### Coleção: `formularios`
-```typescript
-{
-  userId: string;
-  cpf: string;
-  dados: object; // Dados do formulário
-  createdAt: Timestamp;
-  status: 'pendente' | 'processado';
-}
-```
+### 📊 Advanced Data Features
+- **Tables**: Powerful data tables with sorting, filtering, pagination (TanStack Table)
+- **Charts**: Beautiful visualizations with Recharts
+- **Forms**: Type-safe forms with React Hook Form + Zod validation
 
-## 🌐 Deploy
+### 🎨 Interactive Features
+- **Animations**: Smooth micro-interactions with Framer Motion
+- **Drag & Drop**: Modern drag-and-drop functionality with DND Kit
+- **Theme Switching**: Built-in dark/light mode support
 
-- **GitHub**: https://github.com/mbaisi200/passaporte-sistema
-- **Vercel**: https://passaporte-sistema.vercel.app
+### 🔐 Backend Integration
+- **Authentication**: Ready-to-use auth flows with NextAuth.js
+- **Database**: Type-safe database operations with Prisma
+- **API Client**: HTTP requests with Fetch + TanStack Query
+- **State Management**: Simple and scalable with Zustand
 
-## 📝 Licença
+### 🌍 Production Features
+- **Internationalization**: Multi-language support with Next Intl
+- **Image Optimization**: Automatic image processing with Sharp
+- **Type Safety**: End-to-end TypeScript with Zod validation
+- **Essential Hooks**: 100+ useful React hooks with ReactUse for common patterns
 
-Este projeto é proprietário e de uso exclusivo da SB Viagens e Turismo.
+## 🤝 Get Started with Z.ai
+
+1. **Clone this scaffold** to jumpstart your project
+2. **Visit [chat.z.ai](https://chat.z.ai)** to access your AI coding assistant
+3. **Start building** with intelligent code generation and assistance
+4. **Deploy with confidence** using the production-ready setup
 
 ---
 
-Desenvolvido por SB Viagens e Turismo
+Built with ❤️ for the developer community. Supercharged by [Z.ai](https://chat.z.ai) 🚀
