@@ -88,15 +88,26 @@ export default function FormulariosPage() {
           ...doc.data()
         })) as Formulario[];
 
+        // Debug: mostrar status de cada formulário
+        console.log('=== FORMULÁRIOS ANTES DA ORDENAÇÃO ===');
+        data.forEach(f => console.log(`Nome: ${f.dados?.fullName}, Status: "${f.status}"`));
+
         // Ordenar: pendentes primeiro, depois processados
         data.sort((a, b) => {
-          const aIsPendente = !a.status || a.status === '' || a.status === 'pendente';
-          const bIsPendente = !b.status || b.status === '' || b.status === 'pendente';
+          // Normalizar status para comparação (lowercase e trim)
+          const statusA = (a.status || '').toLowerCase().trim();
+          const statusB = (b.status || '').toLowerCase().trim();
+
+          const aIsPendente = statusA === '' || statusA === 'pendente';
+          const bIsPendente = statusB === '' || statusB === 'pendente';
 
           if (aIsPendente && !bIsPendente) return -1;
           if (!aIsPendente && bIsPendente) return 1;
           return 0;
         });
+
+        console.log('=== FORMULÁRIOS DEPOIS DA ORDENAÇÃO ===');
+        data.forEach(f => console.log(`Nome: ${f.dados?.fullName}, Status: "${f.status}"`));
 
         setFormularios(data);
       });
