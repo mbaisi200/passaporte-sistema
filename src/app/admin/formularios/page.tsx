@@ -111,9 +111,13 @@ export default function FormulariosPage() {
     }
 
     // Ordenar: pendentes primeiro, depois processados
+    // Considera como pendente: status === 'pendente', null, undefined ou vazio
     filtered.sort((a, b) => {
-      if (a.status === 'pendente' && b.status !== 'pendente') return -1;
-      if (a.status !== 'pendente' && b.status === 'pendente') return 1;
+      const aIsPendente = !a.status || a.status === '' || a.status === 'pendente';
+      const bIsPendente = !b.status || b.status === '' || b.status === 'pendente';
+
+      if (aIsPendente && !bIsPendente) return -1;
+      if (!aIsPendente && bIsPendente) return 1;
       return 0;
     });
 
