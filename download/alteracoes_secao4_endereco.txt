@@ -1,0 +1,263 @@
+================================================================================
+ALTERAÇÕES REALIZADAS NA SEÇÃO 4 - CONTATO E ENDEREÇO
+================================================================================
+Data: 09/03/2025
+Arquivos modificados: 
+  - /home/z/my-project/src/app/formulario/page.tsx
+  - /home/z/my-project/src/app/admin/formularios/page.tsx
+================================================================================
+
+DESCRIÇÃO DAS ALTERAÇÕES:
+--------------------------------------------------------------------------------
+Na seção 4 do formulário (Contato e Endereço), foram realizadas as seguintes 
+modificações:
+
+1. CAMPO "ENDEREÇO COMPLETO" ALTERADO PARA "ENDEREÇO"
+   - Antes: Campo único "Endereço Completo" com placeholder "Rua, Número, Complemento"
+   - Depois: Campo "Endereço" com placeholder "Rua, Avenida, etc."
+   - O campo continua obrigatório (*)
+
+2. NOVO CAMPO "NÚMERO" ADICIONADO
+   - Posição: Ao lado do campo "Endereço"
+   - Obrigatório: SIM (*)
+   - Placeholder: "Ex: 123"
+   - Campo no FormData: addressNumber
+
+3. NOVO CAMPO "COMPLEMENTO" ADICIONADO
+   - Posição: Abaixo dos campos "Endereço" e "Número"
+   - Obrigatório: NÃO (sem asterisco)
+   - Placeholder: "Ex: Apto 45, Bloco B"
+   - Campo no FormData: complement
+
+================================================================================
+ALTERAÇÕES NA INTERFACE FormData (formulario/page.tsx)
+================================================================================
+
+Adicionados os seguintes campos à interface:
+
+  address: string;        // Existente - alterado label
+  addressNumber: string;  // NOVO - obrigatório
+  complement: string;     // NOVO - não obrigatório
+
+================================================================================
+ALTERAÇÕES NO ESTADO INICIAL (useState)
+================================================================================
+
+Adicionados valores iniciais vazios para os novos campos:
+
+  address: '',
+  addressNumber: '',
+  complement: '',
+
+================================================================================
+ALTERAÇÕES NO FORMULÁRIO (SEÇÃO 4)
+================================================================================
+
+ANTES:
+------
+<div className="md:col-span-2 space-y-2">
+  <Label htmlFor="address">Endereço Completo *</Label>
+  <Input
+    id="address"
+    value={formData.address}
+    onChange={(e) => handleInputChange('address', e.target.value)}
+    placeholder="Rua, Número, Complemento"
+    required
+  />
+</div>
+
+DEPOIS:
+-------
+<div className="space-y-2">
+  <Label htmlFor="address">Endereço *</Label>
+  <Input
+    id="address"
+    value={formData.address}
+    onChange={(e) => handleInputChange('address', e.target.value)}
+    placeholder="Rua, Avenida, etc."
+    required
+  />
+</div>
+
+<div className="space-y-2">
+  <Label htmlFor="addressNumber">Número *</Label>
+  <Input
+    id="addressNumber"
+    value={formData.addressNumber}
+    onChange={(e) => handleInputChange('addressNumber', e.target.value)}
+    placeholder="Ex: 123"
+    required
+  />
+</div>
+
+<div className="md:col-span-2 space-y-2">
+  <Label htmlFor="complement">Complemento</Label>
+  <Input
+    id="complement"
+    value={formData.complement}
+    onChange={(e) => handleInputChange('complement', e.target.value)}
+    placeholder="Ex: Apto 45, Bloco B"
+  />
+</div>
+
+================================================================================
+ALTERAÇÕES NA TELA DE REVISÃO (formulario/page.tsx)
+================================================================================
+
+ANTES:
+------
+<div className="md:col-span-2"><span className="font-medium text-gray-500">Endereço:</span><br />{formData.address || '-'}</div>
+<div><span className="font-medium text-gray-500">Bairro:</span><br />{formData.neighborhood || '-'}</div>
+...
+
+DEPOIS:
+-------
+<div><span className="font-medium text-gray-500">Endereço:</span><br />{formData.address || '-'}</div>
+<div><span className="font-medium text-gray-500">Número:</span><br />{formData.addressNumber || '-'}</div>
+<div className="md:col-span-2"><span className="font-medium text-gray-500">Complemento:</span><br />{formData.complement || '-'}</div>
+<div><span className="font-medium text-gray-500">Bairro:</span><br />{formData.neighborhood || '-'}</div>
+...
+
+================================================================================
+ALTERAÇÕES NO ARQUIVO .TXT GERADO (admin/formularios/page.tsx)
+================================================================================
+
+FORMATAÇÃO DE CPF E TELEFONE:
+-----------------------------
+O arquivo .txt gerado para download agora mostra CPF e Telefone SEM formatação:
+
+CPF:
+- Antes: 000.000.000-00
+- Depois: 00000000000
+
+TELEFONE:
+- Antes: (00) 00000-0000
+- Depois: 00000000000
+
+CEP:
+- Antes: 00000-000
+- Depois: 00000000
+
+ALTERAÇÕES NA FUNÇÃO generateTxtFile:
+-------------------------------------
+
+1. CPF do titular:
+   - Antes: content += `CPF: ${formatCPF(form.cpf)}\n`;
+   - Depois: content += `CPF: ${form.cpf ? form.cpf.replace(/\D/g, '') : '-'}\n`;
+
+2. CPF do Responsável:
+   - Antes: content += `CPF DO RESPONSÁVEL: ${formatCPF(d.responsibleCpf)}\n`;
+   - Depois: content += `CPF DO RESPONSÁVEL: ${d.responsibleCpf.replace(/\D/g, '')}\n`;
+
+3. Telefone:
+   - Antes: content += `TELEFONE: ${d.phone ? d.phone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : '-'}\n`;
+   - Depois: content += `TELEFONE: ${d.phone ? d.phone.replace(/\D/g, '') : '-'}\n`;
+
+4. CEP:
+   - Antes: content += `CEP: ${d.zipCode ? d.zipCode.replace(/(\d{5})(\d{3})/, '$1-$2') : '-'}\n`;
+   - Depois: content += `CEP: ${d.zipCode ? d.zipCode.replace(/\D/g, '') : '-'}\n`;
+
+SEÇÃO 4 DO ARQUIVO .TXT:
+------------------------
+ANTES:
+------
+4. CONTATO E ENDEREÇO
+----------------------
+ENDEREÇO: Rua Exemplo
+BAIRRO: Centro
+CIDADE: São Paulo
+ESTADO: SP
+CEP: 01234-567
+TELEFONE: (11) 99999-9999
+E-MAIL: exemplo@email.com
+PROFISSÃO: Engenheiro
+
+DEPOIS:
+-------
+4. CONTATO E ENDEREÇO
+----------------------
+ENDEREÇO: Rua Exemplo
+NÚMERO: 123
+COMPLEMENTO: Apto 45
+BAIRRO: Centro
+CIDADE: São Paulo
+ESTADO: SP
+CEP: 01234567
+TELEFONE: 11999999999
+E-MAIL: exemplo@email.com
+PROFISSÃO: Engenheiro
+
+================================================================================
+ALTERAÇÕES NA VISUALIZAÇÃO DE DETALHES (admin/formularios/page.tsx)
+================================================================================
+
+A seção de visualização de detalhes do formulário também foi atualizada para 
+mostrar os novos campos:
+
+ANTES:
+------
+<div className="sm:col-span-2 break-words">
+  <span className="text-gray-500">Endereço:</span>
+  <p className="font-medium">{dados.address || '-'}</p>
+</div>
+
+DEPOIS:
+-------
+<div className="break-words">
+  <span className="text-gray-500">Endereço:</span>
+  <p className="font-medium">{dados.address || '-'}</p>
+</div>
+<div>
+  <span className="text-gray-500">Número:</span>
+  <p className="font-medium">{dados.addressNumber || '-'}</p>
+</div>
+{dados.complement && (
+  <div className="sm:col-span-2 break-words">
+    <span className="text-gray-500">Complemento:</span>
+    <p className="font-medium">{dados.complement}</p>
+  </div>
+)}
+
+================================================================================
+LAYOUT DOS CAMPOS NA SEÇÃO 4 (APÓS ALTERAÇÃO)
+================================================================================
+
++-------------------+-------------------+
+|     Endereço *    |     Número *      |
++-------------------+-------------------+
+|          Complemento                 |
++--------------------------------------+
+|     Bairro *      |     Cidade *      |
++-------------------+-------------------+
+|     Estado *      |      CEP *        |
++-------------------+-------------------+
+|  Telefone/WhatsApp * |    E-mail *    |
++----------------------+----------------+
+
+================================================================================
+OBSERVAÇÕES
+================================================================================
+
+1. Os dados dos novos campos são salvos automaticamente no Firestore junto com 
+   os demais dados do formulário.
+
+2. O campo "Número" é obrigatório e deve ser preenchido pelo usuário.
+
+3. O campo "Complemento" é opcional e pode ser deixado em branco.
+
+4. A validação do formulário (required) já está configurada corretamente.
+
+5. Os dados são convertidos para maiúsculas automaticamente pela função 
+   handleInputChange.
+
+6. No arquivo .txt gerado para download:
+   - CPF aparece apenas com números (sem pontos e hífen)
+   - Telefone aparece apenas com números (sem parênteses e hífen)
+   - CEP aparece apenas com números (sem hífen)
+
+7. Na interface de visualização (admin), os dados continuam formatados para 
+   melhor legibilidade.
+
+================================================================================
+FIM DO RELATÓRIO
+================================================================================
