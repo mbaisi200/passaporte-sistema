@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { doc, getDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 // GET - Buscar formulário por ID
 export async function GET(
@@ -9,26 +10,38 @@ export async function GET(
   try {
     const { id } = await params;
     
-    const formulario = await db.formulario.findUnique({
-      where: { id },
-      include: {
-        cliente: {
-          select: { id: true, cpf: true, nome: true, email: true, telefone: true }
-        }
-      }
-    });
+    const formularioDoc = await getDoc(doc(db, 'formularios', id));
 
-    if (!formulario) {
+    if (!formularioDoc.exists()) {
       return NextResponse.json(
         { error: 'Formulário não encontrado' },
         { status: 404 }
       );
     }
 
+    const data = formularioDoc.data();
+
+    // Get cliente info if CPF exists
+    let cliente = null;
+    if (data.cpf) {
+      const clienteDoc = await getDoc(doc(db, 'clientes', data.cpf));
+      if (clienteDoc.exists()) {
+        const clienteData = clienteDoc.data();
+        cliente = {
+          id: clienteDoc.id,
+          cpf: clienteData.cpf,
+          nome: clienteData.nome,
+          email: clienteData.email,
+          telefone: clienteData.telefone
+        };
+      }
+    }
+
     return NextResponse.json({
       formulario: {
-        ...formulario,
-        dados: JSON.parse(formulario.dados)
+        id: formularioDoc.id,
+        ...data,
+        cliente
       }
     });
   } catch (error) {
@@ -52,20 +65,18 @@ export async function PUT(
 
     const updateData: {
       status?: string;
-      dados?: string;
-    } = {};
+      dados?: object;
+      updatedAt?: ReturnType<typeof serverTimestamp>;
+    } = { updatedAt: serverTimestamp() };
 
     if (status) updateData.status = status;
-    if (dados) updateData.dados = JSON.stringify(dados);
+    if (dados) updateData.dados = dados;
 
-    const formulario = await db.formulario.update({
-      where: { id },
-      data: updateData
-    });
+    await updateDoc(doc(db, 'formularios', id), updateData);
 
     return NextResponse.json({
       success: true,
-      formulario: { ...formulario, dados: dados ? dados : JSON.parse(formulario.dados) }
+      formulario: { id, ...updateData, dados: dados }
     });
   } catch (error) {
     console.error('Erro ao atualizar formulário:', error);
@@ -84,9 +95,7 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    await db.formulario.delete({
-      where: { id }
-    });
+    await deleteDoc(doc(db, 'formularios', id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

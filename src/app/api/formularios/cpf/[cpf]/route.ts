@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { 
+  collection, 
+  getDocs, 
+  query, 
+  where, 
+  orderBy, 
+  limit,
+  Timestamp 
+} from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 // GET - Buscar formulário por CPF
 export async function GET(
@@ -10,19 +19,27 @@ export async function GET(
     const { cpf } = await params;
     const cleanCpf = cpf.replace(/\D/g, '');
 
-    const formulario = await db.formulario.findFirst({
-      where: { cpf: cleanCpf },
-      orderBy: { createdAt: 'desc' }
-    });
+    // Query formularios by CPF, ordered by createdAt desc
+    const q = query(
+      collection(db, 'formularios'),
+      where('cpf', '==', cleanCpf),
+      orderBy('createdAt', 'desc'),
+      limit(1)
+    );
 
-    if (!formulario) {
+    const formulariosSnapshot = await getDocs(q);
+
+    if (formulariosSnapshot.empty) {
       return NextResponse.json({ formulario: null });
     }
 
+    const doc = formulariosSnapshot.docs[0];
+    const data = doc.data();
+
     return NextResponse.json({
       formulario: {
-        ...formulario,
-        dados: JSON.parse(formulario.dados)
+        id: doc.id,
+        ...data
       }
     });
   } catch (error) {
