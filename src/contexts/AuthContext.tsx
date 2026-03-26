@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import {
-  User,
+  User as FirebaseUser,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
@@ -10,25 +10,51 @@ import {
   sendPasswordResetEmail
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { auth, db as firestore } from '@/lib/firebase';
 
-interface UserData {
+// Interface para dados do usuário admin (Firebase)
+interface AdminUserData {
   uid: string;
   email: string;
   cpf: string;
-  role: 'admin' | 'user';
+  role: 'admin';
   createdAt: Date;
 }
 
+// Interface para dados do cliente (banco local)
+interface ClienteData {
+  id: string;
+  cpf: string;
+  nome: string | null;
+  email: string | null;
+  telefone: string | null;
+}
+
+// Tipo unificado de usuário
+type UserType = 'admin' | 'cliente';
+
 interface AuthContextType {
-  user: User | null;
-  userData: UserData | null;
+  // Firebase user (admin)
+  user: FirebaseUser | null;
+  userData: AdminUserData | null;
   loading: boolean;
+  
+  // Cliente user (banco local)
+  cliente: ClienteData | null;
+  clienteLoading: boolean;
+  
+  // Tipo de usuário logado
+  userType: UserType | null;
+  
+  // Admin methods
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  createUser: (cpf: string, email: string, password: string) => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
   createAdminIfNotExists: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  
+  // Cliente methods
+  signInCliente: (cpf: string, password: string) => Promise<void>;
+  signOutCliente: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,92 +62,124 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Admin email
 const ADMIN_EMAIL = 'admin@passaporte.com';
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
+// Chave do localStorage para cliente
+const CLIENTE_STORAGE_KEY = 'passaporte_cliente';
 
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [userData, setUserData] = useState<AdminUserData | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  const [cliente, setCliente] = useState<ClienteData | null>(null);
+  const [clienteLoading, setClienteLoading] = useState(true);
+  
+  const [userType, setUserType] = useState<UserType | null>(null);
+
+  // Firebase auth state listener (para admin)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       
       if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const userDoc = await getDoc(doc(firestore, 'users', user.uid));
         if (userDoc.exists()) {
-          setUserData(userDoc.data() as UserData);
+          const data = userDoc.data();
+          if (data.role === 'admin') {
+            setUserData(data as AdminUserData);
+            setUserType('admin');
+          }
         } else if (user.email === ADMIN_EMAIL) {
           // Create admin document if it doesn't exist
-          const adminData: UserData = {
+          const adminData: AdminUserData = {
             uid: user.uid,
             email: user.email,
             cpf: '00000000000',
             role: 'admin',
             createdAt: new Date()
           };
-          await setDoc(doc(db, 'users', user.uid), adminData);
+          await setDoc(doc(firestore, 'users', user.uid), adminData);
           setUserData(adminData);
+          setUserType('admin');
         }
       } else {
         setUserData(null);
+        if (!cliente) {
+          setUserType(null);
+        }
       }
       
       setLoading(false);
     });
 
     return () => unsubscribe();
+  }, [cliente]);
+
+  // Load cliente from localStorage (para clientes)
+  useEffect(() => {
+    const storedCliente = localStorage.getItem(CLIENTE_STORAGE_KEY);
+    if (storedCliente) {
+      try {
+        const parsed = JSON.parse(storedCliente);
+        setCliente(parsed);
+        setUserType('cliente');
+      } catch {
+        localStorage.removeItem(CLIENTE_STORAGE_KEY);
+      }
+    }
+    setClienteLoading(false);
   }, []);
 
+  // Admin sign in
   const signIn = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
   };
 
+  // Sign out (both admin and cliente)
   const signOut = async () => {
     await firebaseSignOut(auth);
     setUser(null);
     setUserData(null);
+    setUserType(null);
   };
 
-  const createUser = async (cpf: string, email: string, password: string) => {
-    // Check if CPF is authorized
+  // Cliente sign in
+  const signInCliente = async (cpf: string, password: string) => {
     const cleanCpf = cpf.replace(/\D/g, '');
-    const cpfDoc = await getDoc(doc(db, 'authorized_cpfs', cleanCpf));
     
-    if (!cpfDoc.exists()) {
-      throw new Error('CPF não autorizado. Entre em contato com a administração.');
-    }
-
-    // Create user in Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    
-    // Create user document in Firestore
-    await setDoc(doc(db, 'users', userCredential.user.uid), {
-      uid: userCredential.user.uid,
-      email: email,
-      cpf: cleanCpf,
-      role: 'user',
-      createdAt: serverTimestamp()
+    const response = await fetch('/api/clientes/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cpf: cleanCpf, senha: password })
     });
 
-    // Update authorized_cpfs to mark as having account
-    await setDoc(doc(db, 'authorized_cpfs', cleanCpf), {
-      ...cpfDoc.data(),
-      hasAccount: true,
-      email: email,
-      userId: userCredential.user.uid
-    }, { merge: true });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Erro ao fazer login');
+    }
+
+    const data = await response.json();
+    setCliente(data.cliente);
+    setUserType('cliente');
+    localStorage.setItem(CLIENTE_STORAGE_KEY, JSON.stringify(data.cliente));
   };
 
+  // Cliente sign out
+  const signOutCliente = () => {
+    setCliente(null);
+    setUserType(null);
+    localStorage.removeItem(CLIENTE_STORAGE_KEY);
+  };
+
+  // Create admin if not exists
   const createAdminIfNotExists = async (email: string, password: string) => {
     if (email !== ADMIN_EMAIL) {
       throw new Error('Este email não é autorizado como administrador.');
     }
 
     try {
-      // Try to create admin user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       
-      // Create admin document in Firestore
-      await setDoc(doc(db, 'users', userCredential.user.uid), {
+      await setDoc(doc(firestore, 'users', userCredential.user.uid), {
         uid: userCredential.user.uid,
         email: email,
         cpf: '00000000000',
@@ -129,7 +187,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         createdAt: serverTimestamp()
       });
     } catch (error: unknown) {
-      // If user already exists, just sign in
       if (error instanceof Error && error.message.includes('email-already-in-use')) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
@@ -138,6 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Reset password
   const resetPassword = async (email: string) => {
     await sendPasswordResetEmail(auth, email);
   };
@@ -147,11 +205,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       userData,
       loading,
+      cliente,
+      clienteLoading,
+      userType,
       signIn,
       signOut,
-      createUser,
+      createAdminIfNotExists,
       resetPassword,
-      createAdminIfNotExists
+      signInCliente,
+      signOutCliente
     }}>
       {children}
     </AuthContext.Provider>

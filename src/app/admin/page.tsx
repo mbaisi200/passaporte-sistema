@@ -5,34 +5,43 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { 
   Users, 
   FileText, 
   UserPlus, 
   LogOut,
   BarChart3,
-  Calendar
+  UserCheck,
+  UserX,
+  Clock,
+  CheckCircle,
+  Database
 } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+
+interface Stats {
+  totalClientes: number;
+  clientesAtivos: number;
+  clientesBloqueados: number;
+  totalFormularios: number;
+  formulariosPendentes: number;
+  formulariosProcessados: number;
+  clientesRecentes: number;
+  formulariosRecentes: number;
+}
 
 export default function AdminDashboard() {
   const { user, userData, loading, signOut } = useAuth();
   const router = useRouter();
-  const [stats, setStats] = useState({
-    totalCpfs: 0,
-    activeAccounts: 0,
-    totalForms: 0,
-    pendingForms: 0
+  const [stats, setStats] = useState<Stats>({
+    totalClientes: 0,
+    clientesAtivos: 0,
+    clientesBloqueados: 0,
+    totalFormularios: 0,
+    formulariosPendentes: 0,
+    formulariosProcessados: 0,
+    clientesRecentes: 0,
+    formulariosRecentes: 0
   });
-  const [periodFilter, setPeriodFilter] = useState('todos');
 
   useEffect(() => {
     if (!loading && (!user || userData?.role !== 'admin')) {
@@ -40,66 +49,21 @@ export default function AdminDashboard() {
     }
   }, [user, userData, loading, router]);
 
-  const filterByPeriod = (data: Record<string, unknown>[], dateField: string) => {
-    if (periodFilter === 'todos') return data;
-    
-    const now = new Date();
-    let startDate: Date;
-    
-    switch (periodFilter) {
-      case 'hoje':
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        break;
-      case 'semana':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'mes':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case 'trimestre':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-        break;
-      case 'ano':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        break;
-      default:
-        return data;
-    }
-    
-    return data.filter((item) => {
-      const timestamp = item[dateField] as { seconds: number } | null;
-      if (!timestamp) return false;
-      const itemDate = new Date(timestamp.seconds * 1000);
-      return itemDate >= startDate;
-    });
-  };
-
   useEffect(() => {
     const fetchStats = async () => {
       if (userData?.role === 'admin') {
-        // Fetch CPFs stats
-        const cpfsSnapshot = await getDocs(collection(db, 'authorized_cpfs'));
-        const cpfsData = cpfsSnapshot.docs.map(doc => doc.data());
-        
-        // Fetch forms stats
-        const formsSnapshot = await getDocs(collection(db, 'formularios'));
-        const formsData = formsSnapshot.docs.map(doc => doc.data());
-        
-        // Apply period filter
-        const filteredCpfs = filterByPeriod(cpfsData, 'addedAt');
-        const filteredForms = filterByPeriod(formsData, 'createdAt');
-        
-        setStats({
-          totalCpfs: filteredCpfs.length,
-          activeAccounts: filteredCpfs.filter(c => c.hasAccount).length,
-          totalForms: filteredForms.length,
-          pendingForms: filteredForms.filter(f => f.status === 'pendente').length
-        });
+        try {
+          const response = await fetch('/api/stats');
+          const data = await response.json();
+          setStats(data);
+        } catch (error) {
+          console.error('Erro ao buscar estatísticas:', error);
+        }
       }
     };
 
     fetchStats();
-  }, [userData, periodFilter]);
+  }, [userData]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -162,7 +126,7 @@ export default function AdminDashboard() {
               onClick={() => router.push('/admin/cpfs')}
             >
               <UserPlus className="mr-2 h-4 w-4" />
-              Gerenciar CPFs
+              Gerenciar Clientes
             </Button>
             <Button
               variant="ghost"
@@ -178,50 +142,33 @@ export default function AdminDashboard() {
 
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-          <h2 className="text-2xl font-bold text-[#623AA2]">Visão Geral</h2>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-gray-500" />
-            <Select value={periodFilter} onValueChange={setPeriodFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Selecionar período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="hoje">Hoje</SelectItem>
-                <SelectItem value="semana">Última Semana</SelectItem>
-                <SelectItem value="mes">Este Mês</SelectItem>
-                <SelectItem value="trimestre">Último Trimestre</SelectItem>
-                <SelectItem value="ano">Este Ano</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        <h2 className="text-2xl font-bold text-[#623AA2] mb-6">Visão Geral</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">
-                CPFs Autorizados
+                Total de Clientes
               </CardTitle>
               <Users className="h-5 w-5 text-[#623AA2]" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-[#623AA2]">{stats.totalCpfs}</div>
-              <p className="text-xs text-gray-500 mt-1">Total de CPFs no sistema</p>
+              <div className="text-3xl font-bold text-[#623AA2]">{stats.totalClientes}</div>
+              <p className="text-xs text-gray-500 mt-1">{stats.clientesRecentes} novos na última semana</p>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">
-                Contas Ativas
+                Clientes Ativos
               </CardTitle>
-              <UserPlus className="h-5 w-5 text-[#F97794]" />
+              <UserCheck className="h-5 w-5 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-[#F97794]">{stats.activeAccounts}</div>
-              <p className="text-xs text-gray-500 mt-1">Usuários registrados</p>
+              <div className="text-3xl font-bold text-green-500">{stats.clientesAtivos}</div>
+              <p className="text-xs text-gray-500 mt-1">{stats.clientesBloqueados} bloqueados</p>
             </CardContent>
           </Card>
 
@@ -230,11 +177,11 @@ export default function AdminDashboard() {
               <CardTitle className="text-sm font-medium text-gray-600">
                 Formulários Enviados
               </CardTitle>
-              <FileText className="h-5 w-5 text-[#623AA2]" />
+              <FileText className="h-5 w-5 text-[#F97794]" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-[#623AA2]">{stats.totalForms}</div>
-              <p className="text-xs text-gray-500 mt-1">Total de formulários</p>
+              <div className="text-3xl font-bold text-[#F97794]">{stats.totalFormularios}</div>
+              <p className="text-xs text-gray-500 mt-1">{stats.formulariosRecentes} na última semana</p>
             </CardContent>
           </Card>
 
@@ -243,43 +190,53 @@ export default function AdminDashboard() {
               <CardTitle className="text-sm font-medium text-gray-600">
                 Pendentes
               </CardTitle>
-              <BarChart3 className="h-5 w-5 text-orange-500" />
+              <Clock className="h-5 w-5 text-orange-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-orange-500">{stats.pendingForms}</div>
-              <p className="text-xs text-gray-500 mt-1">Aguardando processamento</p>
+              <div className="text-3xl font-bold text-orange-500">{stats.formulariosPendentes}</div>
+              <p className="text-xs text-gray-500 mt-1">{stats.formulariosProcessados} processados</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Quick Actions */}
-        <div className="mt-8">
-          <h3 className="text-lg font-semibold text-[#623AA2] mb-4">Ações Rápidas</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/admin/cpfs')}>
-              <CardContent className="flex items-center gap-4 p-6">
-                <div className="w-12 h-12 bg-gradient-to-r from-[#623AA2] to-[#F97794] rounded-full flex items-center justify-center">
-                  <UserPlus className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-[#623AA2]">Adicionar Novo CPF</h4>
-                  <p className="text-sm text-gray-500">Autorize um novo cliente</p>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/admin/formularios')}>
-              <CardContent className="flex items-center gap-4 p-6">
-                <div className="w-12 h-12 bg-[#623AA2] rounded-full flex items-center justify-center">
-                  <FileText className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-[#623AA2]">Ver Formulários</h4>
-                  <p className="text-sm text-gray-500">Consulte formulários enviados</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+        <h3 className="text-lg font-semibold text-[#623AA2] mb-4">Ações Rápidas</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/admin/cpfs')}>
+            <CardContent className="flex items-center gap-4 p-6">
+              <div className="w-12 h-12 bg-gradient-to-r from-[#623AA2] to-[#F97794] rounded-full flex items-center justify-center">
+                <UserPlus className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-[#623AA2]">Adicionar Novo Cliente</h4>
+                <p className="text-sm text-gray-500">Cadastre um novo cliente pelo CPF</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/admin/formularios')}>
+            <CardContent className="flex items-center gap-4 p-6">
+              <div className="w-12 h-12 bg-[#623AA2] rounded-full flex items-center justify-center">
+                <FileText className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-[#623AA2]">Ver Formulários</h4>
+                <p className="text-sm text-gray-500">Consulte formulários enviados</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => router.push('/admin/migrar')}>
+            <CardContent className="flex items-center gap-4 p-6">
+              <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center">
+                <Database className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-[#623AA2]">Migrar Dados</h4>
+                <p className="text-sm text-gray-500">Transferir CPFs do Firestore</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>

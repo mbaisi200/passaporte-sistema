@@ -25,18 +25,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { 
-  collection,
-  getDocs,
-  deleteDoc,
-  doc,
-  updateDoc,
-  setDoc,
-  serverTimestamp,
-  query,
-  orderBy
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { 
   UserPlus, 
   Trash2, 
   ArrowLeft,
@@ -45,21 +33,18 @@ import {
   XCircle,
   AlertCircle,
   Search,
-  Pencil,
   RefreshCw,
   Loader2
 } from 'lucide-react';
 
-interface AuthorizedCpf {
+interface Cliente {
   id: string;
   cpf: string;
-  addedBy: string;
-  addedAt: { seconds: number } | null;
-  hasAccount: boolean;
-  email: string;
-  userId: string;
+  nome: string | null;
+  email: string | null;
   blocked: boolean;
-  clientName?: string;
+  createdAt: string;
+  hasForm: boolean;
 }
 
 const DEFAULT_PASSWORD = '123456';
@@ -67,15 +52,12 @@ const DEFAULT_PASSWORD = '123456';
 export default function ManageCpfsPage() {
   const { user, userData, loading, signOut } = useAuth();
   const router = useRouter();
-  const [cpfs, setCpfs] = useState<AuthorizedCpf[]>([]);
-  const [filteredCpfs, setFilteredCpfs] = useState<AuthorizedCpf[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [filteredClientes, setFilteredClientes] = useState<Cliente[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [newCpf, setNewCpf] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [cpfToDelete, setCpfToDelete] = useState<string | null>(null);
-  const [cpfToEdit, setCpfToEdit] = useState<AuthorizedCpf | null>(null);
-  const [editEmail, setEditEmail] = useState('');
+  const [clienteToDelete, setClienteToDelete] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -86,66 +68,39 @@ export default function ManageCpfsPage() {
   }, [user, userData, loading, router]);
 
   useEffect(() => {
-    fetchCpfs();
+    fetchClientes();
   }, []);
 
   useEffect(() => {
     if (searchTerm) {
-      const filtered = cpfs.filter(c => 
-        c.id.includes(searchTerm.replace(/\D/g, '')) || 
+      const filtered = clientes.filter(c => 
+        c.cpf.includes(searchTerm.replace(/\D/g, '')) || 
+        (c.nome && c.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase()))
       );
-      setFilteredCpfs(filtered);
+      setFilteredClientes(filtered);
     } else {
-      setFilteredCpfs(cpfs);
+      setFilteredClientes(clientes);
     }
-  }, [searchTerm, cpfs]);
+  }, [searchTerm, clientes]);
 
-  const fetchCpfs = async () => {
+  const fetchClientes = async () => {
     try {
-      const q = query(collection(db, 'authorized_cpfs'), orderBy('addedAt', 'desc'));
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as AuthorizedCpf[];
-      
-      // Fetch client names from formularios collection
-      const formulariosQ = query(collection(db, 'formularios'));
-      const formulariosSnapshot = await getDocs(formulariosQ);
-      const formulariosMap = new Map<string, string>();
-      
-      formulariosSnapshot.docs.forEach(doc => {
-        const formData = doc.data();
-        const cpf = doc.id;
-        const clientCpf = formData.cpf?.replace(/\D/g, '');
-        if (clientCpf && formData.dados?.fullName) {
-          formulariosMap.set(clientCpf, formData.dados.fullName);
-        }
-      });
-      
-      // Merge client names into CPFs data
-      const dataWithNames = data.map(cpfData => ({
-        ...cpfData,
-        clientName: formulariosMap.get(cpfData.id) || undefined
-      }));
+      const response = await fetch('/api/clientes');
+      const data = await response.json();
       
       // Sort: Active first (by date desc), then Blocked (by date desc)
-      const sortedData = dataWithNames.sort((a, b) => {
-        // If one is blocked and other is not, show active first
+      const sortedData = data.clientes.sort((a: Cliente, b: Cliente) => {
         if (a.blocked !== b.blocked) {
           return a.blocked ? 1 : -1;
         }
-        // Both have same blocked status, sort by date desc
-        const dateA = a.addedAt?.seconds || 0;
-        const dateB = b.addedAt?.seconds || 0;
-        return dateB - dateA;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
       
-      setCpfs(sortedData);
-      setFilteredCpfs(sortedData);
+      setClientes(sortedData);
+      setFilteredClientes(sortedData);
     } catch (error) {
-      console.error('Erro ao buscar CPFs:', error);
+      console.error('Erro ao buscar clientes:', error);
     }
   };
 
@@ -165,11 +120,6 @@ export default function ManageCpfsPage() {
     return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   };
 
-  const generateEmailFromCPF = (cpf: string) => {
-    const cleanCpf = cpf.replace(/\D/g, '');
-    return `${cleanCpf}@passaporte.com`;
-  };
-
   const handleAddCpf = async () => {
     setMessage(null);
     const cleanCpf = newCpf.replace(/\D/g, '');
@@ -180,7 +130,7 @@ export default function ManageCpfsPage() {
     }
 
     // Check if CPF already exists
-    const exists = cpfs.find(c => c.id === cleanCpf);
+    const exists = clientes.find(c => c.cpf === cleanCpf);
     if (exists) {
       setMessage({ type: 'error', text: 'Este CPF já está cadastrado.' });
       return;
@@ -188,62 +138,27 @@ export default function ManageCpfsPage() {
 
     setSubmitting(true);
     try {
-      const email = generateEmailFromCPF(cleanCpf);
-      
-      // Use Firebase REST API to create user without affecting admin session
-      const apiKey = "AIzaSyBtmRymondW0EVj06CiIUsvWMaz-QWv9OI";
-      const response = await fetch(
-        `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email,
-            password: DEFAULT_PASSWORD,
-            returnSecureToken: false,
-          }),
-        }
-      );
+      const response = await fetch('/api/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          cpf: cleanCpf, 
+          senha: DEFAULT_PASSWORD,
+          addedBy: user?.uid 
+        })
+      });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        if (errorData.error?.message === 'EMAIL_EXISTS') {
-          setMessage({ type: 'error', text: 'Este CPF já tem uma conta associada.' });
-          setSubmitting(false);
-          return;
-        }
-        throw new Error(errorData.error?.message || 'Erro ao criar usuário');
+        const error = await response.json();
+        throw new Error(error.error || 'Erro ao criar cliente');
       }
 
-      const userData = await response.json();
-      const newUserId = userData.localId;
-      
-      // Create user document in Firestore
-      await setDoc(doc(db, 'users', newUserId), {
-        uid: newUserId,
-        email: email,
-        cpf: cleanCpf,
-        role: 'user',
-        createdAt: serverTimestamp()
-      });
-
-      // Create authorized_cpfs document
-      await setDoc(doc(db, 'authorized_cpfs', cleanCpf), {
-        cpf: cleanCpf,
-        addedBy: user?.uid,
-        addedAt: serverTimestamp(),
-        hasAccount: true,
-        email: email,
-        userId: newUserId,
-        blocked: false
-      });
-      
       setMessage({ 
         type: 'success', 
-        text: `CPF cadastrado com sucesso! Login: ${email} | Senha: ${DEFAULT_PASSWORD}` 
+        text: `CPF cadastrado com sucesso! Login: ${cleanCpf} | Senha padrão: ${DEFAULT_PASSWORD}` 
       });
       setNewCpf('');
-      fetchCpfs();
+      fetchClientes();
     } catch (error: unknown) {
       console.error('Erro:', error);
       if (error instanceof Error) {
@@ -255,41 +170,48 @@ export default function ManageCpfsPage() {
   };
 
   const handleDeleteCpf = async () => {
-    if (!cpfToDelete) return;
+    if (!clienteToDelete) return;
     
     try {
-      await deleteDoc(doc(db, 'authorized_cpfs', cpfToDelete));
+      const response = await fetch(`/api/clientes/${clienteToDelete}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao remover cliente');
+      }
+
       setMessage({ type: 'success', text: 'CPF removido com sucesso!' });
       setDialogOpen(false);
-      setCpfToDelete(null);
-      fetchCpfs();
+      setClienteToDelete(null);
+      fetchClientes();
     } catch (error) {
+      console.error('Erro:', error);
       setMessage({ type: 'error', text: 'Erro ao remover CPF.' });
     }
   };
 
-  const handleToggleBlock = async (cpf: AuthorizedCpf) => {
+  const handleToggleBlock = async (cliente: Cliente) => {
     try {
-      const newBlockedStatus = !cpf.blocked;
-      await updateDoc(doc(db, 'authorized_cpfs', cpf.id), {
-        blocked: newBlockedStatus
+      const response = await fetch(`/api/clientes/${cliente.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blocked: !cliente.blocked })
       });
-      
+
+      if (!response.ok) {
+        throw new Error('Erro ao atualizar status');
+      }
+
       setMessage({ 
         type: 'success', 
-        text: newBlockedStatus ? 'Acesso bloqueado com sucesso!' : 'Acesso liberado com sucesso!' 
+        text: !cliente.blocked ? 'Acesso bloqueado com sucesso!' : 'Acesso liberado com sucesso!' 
       });
-      fetchCpfs();
+      fetchClientes();
     } catch (error) {
       console.error('Erro:', error);
       setMessage({ type: 'error', text: 'Erro ao alterar status de acesso.' });
     }
-  };
-
-  const openEditDialog = (cpf: AuthorizedCpf) => {
-    setCpfToEdit(cpf);
-    setEditEmail(cpf.email || '');
-    setEditDialogOpen(true);
   };
 
   const handleSignOut = async () => {
@@ -297,9 +219,9 @@ export default function ManageCpfsPage() {
     router.push('/');
   };
 
-  const formatDate = (timestamp: { seconds: number } | null) => {
-    if (!timestamp) return '-';
-    return new Date(timestamp.seconds * 1000).toLocaleDateString('pt-BR');
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
   if (loading) {
@@ -325,7 +247,7 @@ export default function ManageCpfsPage() {
                 <span className="text-[#623AA2] font-bold">SB</span>
               </div>
               <div>
-                <h1 className="text-xl font-bold">Gerenciar CPFs</h1>
+                <h1 className="text-xl font-bold">Gerenciar Clientes</h1>
                 <p className="text-sm text-white/80">SB Viagens e Turismo</p>
               </div>
             </div>
@@ -358,7 +280,7 @@ export default function ManageCpfsPage() {
               className="border-b-2 border-[#F97794] text-[#623AA2]"
             >
               <UserPlus className="mr-2 h-4 w-4" />
-              Gerenciar CPFs
+              Gerenciar Clientes
             </Button>
             <Button
               variant="ghost"
@@ -381,10 +303,10 @@ export default function ManageCpfsPage() {
               <div>
                 <p className="font-medium text-blue-800">Informações de Acesso</p>
                 <p className="text-sm text-blue-700 mt-1">
-                  Ao cadastrar um CPF, o sistema cria automaticamente uma conta com:
+                  Ao cadastrar um CPF, o sistema cria automaticamente uma conta de cliente com:
                 </p>
                 <p className="text-sm text-blue-700 mt-1">
-                  <strong>Login:</strong> <code className="bg-blue-100 px-1 rounded">CPF@passaporte.com</code> (apenas números)
+                  <strong>Login:</strong> <code className="bg-blue-100 px-1 rounded">CPF (apenas números)</code>
                 </p>
                 <p className="text-sm text-blue-700">
                   <strong>Senha padrão:</strong> <code className="bg-blue-100 px-1 rounded">123456</code>
@@ -447,15 +369,15 @@ export default function ManageCpfsPage() {
           </CardContent>
         </Card>
 
-        {/* CPF List */}
+        {/* Clientes List */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-[#623AA2]">Clientes Cadastrados ({cpfs.length})</CardTitle>
+              <CardTitle className="text-[#623AA2]">Clientes Cadastrados ({clientes.length})</CardTitle>
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Buscar CPF..."
+                  placeholder="Buscar CPF ou nome..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
@@ -470,27 +392,25 @@ export default function ManageCpfsPage() {
                   <TableRow>
                     <TableHead className="w-[180px]">Nome</TableHead>
                     <TableHead className="w-[140px]">CPF</TableHead>
-                    <TableHead>Login</TableHead>
                     <TableHead className="w-[100px]">Status</TableHead>
                     <TableHead className="w-[120px]">Cadastro</TableHead>
                     <TableHead className="text-right w-[100px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCpfs.length === 0 ? (
+                  {filteredClientes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                         Nenhum cliente cadastrado
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredCpfs.map((cpf) => (
-                      <TableRow key={cpf.id}>
-                        <TableCell className="font-medium truncate max-w-[180px]">{cpf.clientName || '-'}</TableCell>
-                        <TableCell className="font-mono text-sm">{formatCPF(cpf.id)}</TableCell>
-                        <TableCell className="text-sm truncate max-w-[150px]">{cpf.email || generateEmailFromCPF(cpf.id)}</TableCell>
+                    filteredClientes.map((cliente) => (
+                      <TableRow key={cliente.id}>
+                        <TableCell className="font-medium truncate max-w-[180px]">{cliente.nome || '-'}</TableCell>
+                        <TableCell className="font-mono text-sm">{formatCPF(cliente.cpf)}</TableCell>
                         <TableCell>
-                          {cpf.blocked ? (
+                          {cliente.blocked ? (
                             <span className="inline-flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded">
                               <XCircle className="h-4 w-4" />
                               Bloqueado
@@ -502,15 +422,15 @@ export default function ManageCpfsPage() {
                             </span>
                           )}
                         </TableCell>
-                        <TableCell>{formatDate(cpf.addedAt)}</TableCell>
+                        <TableCell>{formatDate(cliente.createdAt)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
-                              className={cpf.blocked ? "text-green-600 hover:bg-green-50" : "text-orange-600 hover:bg-orange-50"}
-                              onClick={() => handleToggleBlock(cpf)}
-                              title={cpf.blocked ? "Liberar acesso" : "Bloquear acesso"}
+                              className={cliente.blocked ? "text-green-600 hover:bg-green-50" : "text-orange-600 hover:bg-orange-50"}
+                              onClick={() => handleToggleBlock(cliente)}
+                              title={cliente.blocked ? "Liberar acesso" : "Bloquear acesso"}
                             >
                               <RefreshCw className="h-4 w-4" />
                             </Button>
@@ -519,7 +439,7 @@ export default function ManageCpfsPage() {
                               size="sm"
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               onClick={() => {
-                                setCpfToDelete(cpf.id);
+                                setClienteToDelete(cliente.id);
                                 setDialogOpen(true);
                               }}
                               title="Excluir"
@@ -544,8 +464,8 @@ export default function ManageCpfsPage() {
           <DialogHeader>
             <DialogTitle>Confirmar Exclusão</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja remover o CPF <strong>{cpfToDelete && formatCPF(cpfToDelete)}</strong>?
-              Esta ação não pode ser desfeita.
+              Tem certeza que deseja remover este cliente?
+              Esta ação não pode ser desfeita e removerá também os formulários associados.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -554,41 +474,6 @@ export default function ManageCpfsPage() {
             </Button>
             <Button variant="destructive" onClick={handleDeleteCpf}>
               Remover
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Cliente</DialogTitle>
-            <DialogDescription>
-              CPF: <strong>{cpfToEdit && formatCPF(cpfToEdit.id)}</strong>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Login</Label>
-              <Input
-                value={cpfToEdit?.email || ''}
-                disabled
-                className="bg-gray-50"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Senha Padrão</Label>
-              <Input
-                value={DEFAULT_PASSWORD}
-                disabled
-                className="bg-gray-50"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>

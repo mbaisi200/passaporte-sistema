@@ -17,19 +17,19 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [inputType, setInputType] = useState<'cpf' | 'email'>('cpf');
-  const { signIn, user, userData, loading: authLoading } = useAuth();
+  const { signIn, user, userData, loading: authLoading, cliente, clienteLoading, userType, signInCliente } = useAuth();
   const router = useRouter();
 
   // Redirect if already logged in
   useEffect(() => {
-    if (!authLoading && user && userData) {
-      if (userData.role === 'admin') {
+    if (!authLoading && !clienteLoading) {
+      if (userType === 'admin' && user && userData) {
         router.push('/admin');
-      } else {
+      } else if (userType === 'cliente' && cliente) {
         router.push('/formulario');
       }
     }
-  }, [user, userData, authLoading, router]);
+  }, [user, userData, authLoading, cliente, clienteLoading, userType, router]);
 
   const maskCPF = (value: string) => {
     let v = value.replace(/\D/g, '');
@@ -38,15 +38,6 @@ export default function LoginPage() {
     v = v.replace(/(\d{3})(\d)/, '$1.$2');
     v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
     return v;
-  };
-
-  const unmaskCPF = (value: string) => {
-    return value.replace(/\D/g, '');
-  };
-
-  const generateEmailFromCPF = (cpf: string) => {
-    const cleanCpf = cpf.replace(/\D/g, '');
-    return `${cleanCpf}@passaporte.com`;
   };
 
   const handleInputChange = (value: string) => {
@@ -64,29 +55,28 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
-    let email: string;
-
-    if (inputType === 'email') {
-      // Admin login com email direto
-      email = loginInput.trim();
-      if (!email.includes('@') || !email.includes('.')) {
-        setError('Digite um email válido.');
-        return;
-      }
-    } else {
-      // Cliente login com CPF
-      const cleanCpf = unmaskCPF(loginInput);
-      if (cleanCpf.length !== 11) {
-        setError('Digite um CPF válido com 11 dígitos.');
-        return;
-      }
-      email = generateEmailFromCPF(loginInput);
-    }
-
     setLoading(true);
 
     try {
-      await signIn(email, password);
+      if (inputType === 'email') {
+        // Admin login com email direto (Firebase)
+        const email = loginInput.trim();
+        if (!email.includes('@') || !email.includes('.')) {
+          setError('Digite um email válido.');
+          setLoading(false);
+          return;
+        }
+        await signIn(email, password);
+      } else {
+        // Cliente login com CPF (banco local)
+        const cleanCpf = loginInput.replace(/\D/g, '');
+        if (cleanCpf.length !== 11) {
+          setError('Digite um CPF válido com 11 dígitos.');
+          setLoading(false);
+          return;
+        }
+        await signInCliente(cleanCpf, password);
+      }
       // Wait for auth state to update - useEffect will handle redirect
     } catch (err: unknown) {
       console.error('Login error:', err);
@@ -102,7 +92,7 @@ export default function LoginPage() {
         } else if (err.message.includes('auth/too-many-requests')) {
           setError('Muitas tentativas. Aguarde alguns minutos.');
         } else {
-          setError('Erro ao fazer login. Verifique seus dados.');
+          setError(err.message || 'Erro ao fazer login. Verifique seus dados.');
         }
       } else {
         setError('Erro ao fazer login. Tente novamente.');
@@ -111,6 +101,14 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  if (authLoading || clienteLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#009639]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#002776] to-[#009639] p-4">
