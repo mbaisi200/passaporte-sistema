@@ -201,7 +201,7 @@ export default function ManageClientesPage() {
   const handleToggleBlock = async (cliente: Cliente) => {
     try {
       const newBlockedStatus = !cliente.blocked;
-      await updateDoc(doc(db, 'clientes', cliente.cpf), {
+      await updateDoc(doc(db, 'clientes', cliente.id), {
         blocked: newBlockedStatus
       });
       
@@ -448,7 +448,7 @@ export default function ManageClientesPage() {
                               size="sm"
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               onClick={() => {
-                                setClienteToDelete(cliente.cpf);
+                                setClienteToDelete(cliente.id);
                                 setDialogOpen(true);
                               }}
                               title="Excluir"
@@ -474,7 +474,7 @@ export default function ManageClientesPage() {
             <DialogTitle>Confirmar Exclusão</DialogTitle>
             <DialogDescription>
               Tem certeza que deseja remover o cliente <strong>{clienteToDelete && formatCPF(clienteToDelete)}</strong>?
-              Esta ação não pode ser desfeita.
+              Esta ação não pode ser desfeita e removerá o cliente permanentemente do sistema.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
