@@ -25,6 +25,18 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { 
+  collection,
+  getDocs,
+  deleteDoc,
+  doc,
+  updateDoc,
+  setDoc,
+  serverTimestamp,
+  query,
+  orderBy
+} from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { 
   UserPlus, 
   Trash2, 
   ArrowLeft,
@@ -42,14 +54,15 @@ interface Cliente {
   cpf: string;
   nome: string | null;
   email: string | null;
+  senha: string;
   blocked: boolean;
-  createdAt: string;
-  hasForm: boolean;
+  addedBy: string;
+  addedAt: { seconds: number } | null;
 }
 
 const DEFAULT_PASSWORD = '123456';
 
-export default function ManageCpfsPage() {
+export default function ManageClientesPage() {
   const { user, userData, loading, signOut } = useAuth();
   const router = useRouter();
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -75,8 +88,7 @@ export default function ManageCpfsPage() {
     if (searchTerm) {
       const filtered = clientes.filter(c => 
         c.cpf.includes(searchTerm.replace(/\D/g, '')) || 
-        (c.nome && c.nome.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase()))
+        (c.nome && c.nome.toLowerCase().includes(searchTerm.toLowerCase()))
       );
       setFilteredClientes(filtered);
     } else {
@@ -86,15 +98,22 @@ export default function ManageCpfsPage() {
 
   const fetchClientes = async () => {
     try {
-      const response = await fetch('/api/clientes');
-      const data = await response.json();
+      // Buscar da coleção 'clientes' no Firestore
+      const q = query(collection(db, 'clientes'), orderBy('addedAt', 'desc'));
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Cliente[];
       
       // Sort: Active first (by date desc), then Blocked (by date desc)
-      const sortedData = data.clientes.sort((a: Cliente, b: Cliente) => {
+      const sortedData = data.sort((a, b) => {
         if (a.blocked !== b.blocked) {
           return a.blocked ? 1 : -1;
         }
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        const dateA = a.addedAt?.seconds || 0;
+        const dateB = b.addedAt?.seconds || 0;
+        return dateB - dateA;
       });
       
       setClientes(sortedData);
@@ -138,24 +157,20 @@ export default function ManageCpfsPage() {
 
     setSubmitting(true);
     try {
-      const response = await fetch('/api/clientes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          cpf: cleanCpf, 
-          senha: DEFAULT_PASSWORD,
-          addedBy: user?.uid 
-        })
+      // Criar cliente na coleção 'clientes' do Firestore (sem Firebase Auth)
+      await setDoc(doc(db, 'clientes', cleanCpf), {
+        cpf: cleanCpf,
+        nome: null,
+        email: null,
+        senha: DEFAULT_PASSWORD,
+        blocked: false,
+        addedBy: user?.uid,
+        addedAt: serverTimestamp()
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Erro ao criar cliente');
-      }
-
+      
       setMessage({ 
         type: 'success', 
-        text: `CPF cadastrado com sucesso! Login: ${cleanCpf} | Senha padrão: ${DEFAULT_PASSWORD}` 
+        text: `Cliente cadastrado com sucesso! Login: ${cleanCpf} | Senha: ${DEFAULT_PASSWORD}` 
       });
       setNewCpf('');
       fetchClientes();
@@ -173,39 +188,26 @@ export default function ManageCpfsPage() {
     if (!clienteToDelete) return;
     
     try {
-      const response = await fetch(`/api/clientes/${clienteToDelete}`, {
-        method: 'DELETE'
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao remover cliente');
-      }
-
-      setMessage({ type: 'success', text: 'CPF removido com sucesso!' });
+      await deleteDoc(doc(db, 'clientes', clienteToDelete));
+      setMessage({ type: 'success', text: 'Cliente removido com sucesso!' });
       setDialogOpen(false);
       setClienteToDelete(null);
       fetchClientes();
     } catch (error) {
-      console.error('Erro:', error);
-      setMessage({ type: 'error', text: 'Erro ao remover CPF.' });
+      setMessage({ type: 'error', text: 'Erro ao remover cliente.' });
     }
   };
 
   const handleToggleBlock = async (cliente: Cliente) => {
     try {
-      const response = await fetch(`/api/clientes/${cliente.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blocked: !cliente.blocked })
+      const newBlockedStatus = !cliente.blocked;
+      await updateDoc(doc(db, 'clientes', cliente.cpf), {
+        blocked: newBlockedStatus
       });
-
-      if (!response.ok) {
-        throw new Error('Erro ao atualizar status');
-      }
-
+      
       setMessage({ 
         type: 'success', 
-        text: !cliente.blocked ? 'Acesso bloqueado com sucesso!' : 'Acesso liberado com sucesso!' 
+        text: newBlockedStatus ? 'Acesso bloqueado com sucesso!' : 'Acesso liberado com sucesso!' 
       });
       fetchClientes();
     } catch (error) {
@@ -219,9 +221,9 @@ export default function ManageCpfsPage() {
     router.push('/');
   };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('pt-BR');
+  const formatDate = (timestamp: { seconds: number } | null) => {
+    if (!timestamp) return '-';
+    return new Date(timestamp.seconds * 1000).toLocaleDateString('pt-BR');
   };
 
   if (loading) {
@@ -289,6 +291,13 @@ export default function ManageCpfsPage() {
             >
               Formulários
             </Button>
+            <Button
+              variant="ghost"
+              className="text-gray-600 hover:text-[#623AA2]"
+              onClick={() => router.push('/admin/migrar')}
+            >
+              Migrar Dados
+            </Button>
           </div>
         </div>
       </nav>
@@ -303,7 +312,7 @@ export default function ManageCpfsPage() {
               <div>
                 <p className="font-medium text-blue-800">Informações de Acesso</p>
                 <p className="text-sm text-blue-700 mt-1">
-                  Ao cadastrar um CPF, o sistema cria automaticamente uma conta de cliente com:
+                  Ao cadastrar um CPF, o cliente pode acessar o sistema com:
                 </p>
                 <p className="text-sm text-blue-700 mt-1">
                   <strong>Login:</strong> <code className="bg-blue-100 px-1 rounded">CPF (apenas números)</code>
@@ -422,7 +431,7 @@ export default function ManageCpfsPage() {
                             </span>
                           )}
                         </TableCell>
-                        <TableCell>{formatDate(cliente.createdAt)}</TableCell>
+                        <TableCell>{formatDate(cliente.addedAt)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
                             <Button
@@ -439,7 +448,7 @@ export default function ManageCpfsPage() {
                               size="sm"
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               onClick={() => {
-                                setClienteToDelete(cliente.id);
+                                setClienteToDelete(cliente.cpf);
                                 setDialogOpen(true);
                               }}
                               title="Excluir"
@@ -464,8 +473,8 @@ export default function ManageCpfsPage() {
           <DialogHeader>
             <DialogTitle>Confirmar Exclusão</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja remover este cliente?
-              Esta ação não pode ser desfeita e removerá também os formulários associados.
+              Tem certeza que deseja remover o cliente <strong>{clienteToDelete && formatCPF(clienteToDelete)}</strong>?
+              Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

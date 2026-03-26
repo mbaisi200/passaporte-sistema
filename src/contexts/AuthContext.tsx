@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import {
-  User as FirebaseUser,
+  User,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
@@ -10,9 +10,9 @@ import {
   sendPasswordResetEmail
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db as firestore } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 
-// Interface para dados do usuário admin (Firebase)
+// Interface para dados do usuário admin (Firebase Auth)
 interface AdminUserData {
   uid: string;
   email: string;
@@ -21,13 +21,13 @@ interface AdminUserData {
   createdAt: Date;
 }
 
-// Interface para dados do cliente (banco local)
+// Interface para dados do cliente (coleção 'clientes' no Firestore)
 interface ClienteData {
   id: string;
   cpf: string;
   nome: string | null;
   email: string | null;
-  telefone: string | null;
+  blocked: boolean;
 }
 
 // Tipo unificado de usuário
@@ -35,11 +35,11 @@ type UserType = 'admin' | 'cliente';
 
 interface AuthContextType {
   // Firebase user (admin)
-  user: FirebaseUser | null;
+  user: User | null;
   userData: AdminUserData | null;
   loading: boolean;
   
-  // Cliente user (banco local)
+  // Cliente user (coleção 'clientes' no Firestore)
   cliente: ClienteData | null;
   clienteLoading: boolean;
   
@@ -66,7 +66,7 @@ const ADMIN_EMAIL = 'admin@passaporte.com';
 const CLIENTE_STORAGE_KEY = 'passaporte_cliente';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<AdminUserData | null>(null);
   const [loading, setLoading] = useState(true);
   
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(user);
       
       if (user) {
-        const userDoc = await getDoc(doc(firestore, 'users', user.uid));
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
           const data = userDoc.data();
           if (data.role === 'admin') {
@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: 'admin',
             createdAt: new Date()
           };
-          await setDoc(doc(firestore, 'users', user.uid), adminData);
+          await setDoc(doc(db, 'users', user.uid), adminData);
           setUserData(adminData);
           setUserType('admin');
         }
@@ -142,25 +142,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserType(null);
   };
 
-  // Cliente sign in
+  // Cliente sign in - verifica na coleção 'clientes' do Firestore
   const signInCliente = async (cpf: string, password: string) => {
     const cleanCpf = cpf.replace(/\D/g, '');
     
-    const response = await fetch('/api/clientes/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cpf: cleanCpf, senha: password })
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Erro ao fazer login');
+    // Buscar cliente na coleção 'clientes' do Firestore
+    const clienteDoc = await getDoc(doc(db, 'clientes', cleanCpf));
+    
+    if (!clienteDoc.exists()) {
+      throw new Error('CPF não encontrado');
     }
-
-    const data = await response.json();
-    setCliente(data.cliente);
+    
+    const clienteData = clienteDoc.data();
+    
+    // Verificar se está bloqueado
+    if (clienteData.blocked) {
+      throw new Error('Acesso bloqueado. Entre em contato com a administração.');
+    }
+    
+    // Verificar senha
+    if (clienteData.senha !== password) {
+      throw new Error('Senha incorreta');
+    }
+    
+    const clienteInfo: ClienteData = {
+      id: cleanCpf,
+      cpf: cleanCpf,
+      nome: clienteData.nome || null,
+      email: clienteData.email || null,
+      blocked: clienteData.blocked || false
+    };
+    
+    setCliente(clienteInfo);
     setUserType('cliente');
-    localStorage.setItem(CLIENTE_STORAGE_KEY, JSON.stringify(data.cliente));
+    localStorage.setItem(CLIENTE_STORAGE_KEY, JSON.stringify(clienteInfo));
   };
 
   // Cliente sign out
@@ -179,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       
-      await setDoc(doc(firestore, 'users', userCredential.user.uid), {
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
         uid: userCredential.user.uid,
         email: email,
         cpf: '00000000000',

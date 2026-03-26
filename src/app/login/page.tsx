@@ -17,7 +17,16 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [inputType, setInputType] = useState<'cpf' | 'email'>('cpf');
-  const { signIn, user, userData, loading: authLoading, cliente, clienteLoading, userType, signInCliente } = useAuth();
+  const { 
+    user, 
+    userData, 
+    loading: authLoading, 
+    signIn, 
+    cliente, 
+    clienteLoading, 
+    userType, 
+    signInCliente 
+  } = useAuth();
   const router = useRouter();
 
   // Redirect if already logged in
@@ -59,7 +68,7 @@ export default function LoginPage() {
 
     try {
       if (inputType === 'email') {
-        // Admin login com email direto (Firebase)
+        // Admin login com email via Firebase Auth
         const email = loginInput.trim();
         if (!email.includes('@') || !email.includes('.')) {
           setError('Digite um email válido.');
@@ -67,8 +76,9 @@ export default function LoginPage() {
           return;
         }
         await signIn(email, password);
+        // useEffect will handle redirect
       } else {
-        // Cliente login com CPF (banco local)
+        // Cliente login com CPF via Firestore (coleção 'clientes')
         const cleanCpf = loginInput.replace(/\D/g, '');
         if (cleanCpf.length !== 11) {
           setError('Digite um CPF válido com 11 dígitos.');
@@ -76,8 +86,8 @@ export default function LoginPage() {
           return;
         }
         await signInCliente(cleanCpf, password);
+        // useEffect will handle redirect
       }
-      // Wait for auth state to update - useEffect will handle redirect
     } catch (err: unknown) {
       console.error('Login error:', err);
       if (err instanceof Error) {
@@ -92,7 +102,7 @@ export default function LoginPage() {
         } else if (err.message.includes('auth/too-many-requests')) {
           setError('Muitas tentativas. Aguarde alguns minutos.');
         } else {
-          setError(err.message || 'Erro ao fazer login. Verifique seus dados.');
+          setError(err.message);
         }
       } else {
         setError('Erro ao fazer login. Tente novamente.');

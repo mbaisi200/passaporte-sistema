@@ -16,6 +16,8 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { collection, addDoc, serverTimestamp, doc, getDoc, query, where, getDocs, orderBy, limit, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { 
   FileText, 
   User, 
@@ -73,49 +75,8 @@ interface FormData {
   passportType: string;
 }
 
-const initialFormData: FormData = {
-  fullName: '',
-  previousName: '',
-  nameChangeReason: '',
-  motherName: '',
-  fatherName: '',
-  birthDate: '',
-  birthCity: '',
-  birthState: '',
-  gender: '',
-  skinColor: '',
-  maritalStatus: '',
-  responsibleCpf: '',
-  cpf: '',
-  rg: '',
-  rgIssuer: '',
-  rgIssueDate: '',
-  previousPassport: '',
-  passportSeries: '',
-  passportNumber: '',
-  passportStatus: '',
-  certificateType: '',
-  certificateModel: '',
-  certificateNumberNew: '',
-  certificateNumberOld: '',
-  certificateBook: '',
-  certificatePage: '',
-  address: '',
-  addressNumber: '',
-  complement: '',
-  neighborhood: '',
-  city: '',
-  state: '',
-  zipCode: '',
-  phone: '',
-  email: '',
-  profession: '',
-  travelAuthorization: '',
-  passportType: ''
-};
-
 export default function FormularioPage() {
-  const { userType, cliente, clienteLoading, signOutCliente } = useAuth();
+  const { cliente, clienteLoading, userType, signOutCliente } = useAuth();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -124,76 +85,111 @@ export default function FormularioPage() {
   const [loadingForm, setLoadingForm] = useState(true);
   const [existingFormId, setExistingFormId] = useState<string | null>(null);
   
-  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [formData, setFormData] = useState<FormData>({
+    fullName: '',
+    previousName: '',
+    nameChangeReason: '',
+    motherName: '',
+    fatherName: '',
+    birthDate: '',
+    birthCity: '',
+    birthState: '',
+    gender: '',
+    skinColor: '',
+    maritalStatus: '',
+    responsibleCpf: '',
+    cpf: '',
+    rg: '',
+    rgIssuer: '',
+    rgIssueDate: '',
+    previousPassport: '',
+    passportSeries: '',
+    passportNumber: '',
+    passportStatus: '',
+    certificateType: '',
+    certificateModel: '',
+    certificateNumberNew: '',
+    certificateNumberOld: '',
+    certificateBook: '',
+    certificatePage: '',
+    address: '',
+    addressNumber: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    phone: '',
+    email: '',
+    profession: '',
+    travelAuthorization: '',
+    passportType: ''
+  });
 
   useEffect(() => {
     if (!clienteLoading && userType !== 'cliente') {
       router.push('/login');
-      return;
     }
     
-    // Load existing form data and check status
+    // Check if cliente is blocked, load existing form data
     if (!clienteLoading && cliente) {
-      const loadFormData = async () => {
-        try {
-          // Check if cliente is blocked
-          const clienteResponse = await fetch(`/api/clientes/cpf/${cliente.cpf}`);
-          if (clienteResponse.ok) {
-            const clienteData = await clienteResponse.json();
-            if (clienteData.cliente?.blocked) {
-              setBlocked(true);
-              setLoadingForm(false);
-              return;
-            }
-          }
+      const checkUserStatus = async () => {
+        // Check if blocked in clientes collection
+        const clienteDoc = await getDoc(doc(db, 'clientes', cliente.cpf));
+        if (clienteDoc.exists() && clienteDoc.data().blocked) {
+          setBlocked(true);
+          setLoadingForm(false);
+          return;
+        }
 
-          // Check for existing form
-          const formResponse = await fetch(`/api/formularios/cpf/${cliente.cpf}`);
-          if (formResponse.ok) {
-            const formData = await formResponse.json();
-            
-            if (formData.formulario) {
-              // If status is "processado", block access
-              if (formData.formulario.status === 'processado') {
-                setBlocked(true);
-                setLoadingForm(false);
-                return;
-              }
-              
-              // If status is "pendente", load the existing data
-              if (formData.formulario.status === 'pendente' && formData.formulario.dados) {
-                setExistingFormId(formData.formulario.id);
-                const d = formData.formulario.dados;
-                
-                // Format numbers for display
-                const formattedData: FormData = {
-                  ...d,
-                  cpf: d.cpf ? d.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '',
-                  responsibleCpf: d.responsibleCpf ? d.responsibleCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '',
-                  zipCode: d.zipCode ? d.zipCode.replace(/(\d{5})(\d{3})/, '$1-$2') : '',
-                  phone: d.phone ? (d.phone.length === 11 ? d.phone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : d.phone.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')) : '',
-                };
-                
-                setFormData(formattedData);
-              }
-            }
+        // Check for existing form
+        const formsQuery = query(
+          collection(db, 'formularios'),
+          where('cpf', '==', cliente.cpf),
+          limit(1)
+        );
+        
+        const formsSnapshot = await getDocs(formsQuery);
+        
+        if (!formsSnapshot.empty) {
+          const formDoc = formsSnapshot.docs[0];
+          const formData = formDoc.data();
+          
+          // If status is "processado", block access
+          if (formData.status === 'processado') {
+            setBlocked(true);
+            setLoadingForm(false);
+            return;
           }
           
-          // Pre-fill CPF from logged in user if not already loaded
-          if (cliente.cpf) {
-            const formattedCpf = cliente.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-            setFormData(prev => prev.cpf ? prev : { ...prev, cpf: formattedCpf });
+          // If status is "pendente", load the existing data
+          if (formData.status === 'pendente' && formData.dados) {
+            setExistingFormId(formDoc.id);
+            const d = formData.dados;
+            
+            // Format numbers for display
+            const formattedData: FormData = {
+              ...d,
+              cpf: d.cpf ? d.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '',
+              responsibleCpf: d.responsibleCpf ? d.responsibleCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '',
+              zipCode: d.zipCode ? d.zipCode.replace(/(\d{5})(\d{3})/, '$1-$2') : '',
+              phone: d.phone ? (d.phone.length === 11 ? d.phone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') : d.phone.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')) : '',
+            };
+            
+            setFormData(formattedData);
           }
-        } catch (error) {
-          console.error('Erro ao carregar dados:', error);
-        } finally {
-          setLoadingForm(false);
         }
+        
+        setLoadingForm(false);
       };
       
-      loadFormData();
+      checkUserStatus();
+      
+      // Pre-fill CPF from logged in cliente if not already loaded
+      const formattedCpf = cliente.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+      setFormData(prev => prev.cpf ? prev : { ...prev, cpf: formattedCpf });
     }
-  }, [cliente, clienteLoading, userType, router]);
+  }, [cliente, clienteLoading, router, userType]);
 
   const toUpper = (value: string) => value.toUpperCase();
   
@@ -255,18 +251,21 @@ export default function FormularioPage() {
       // Clean data before saving (remove formatting from numbers)
       const cleanedData = cleanDataForStorage(formData);
       
-      const response = await fetch('/api/formularios', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clienteId: cliente?.id,
-          cpf: cleanedData.cpf,
-          dados: cleanedData
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao salvar formulário');
+      if (existingFormId) {
+        // Update existing form
+        await updateDoc(doc(db, 'formularios', existingFormId), {
+          dados: cleanedData,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        // Create new form
+        await addDoc(collection(db, 'formularios'), {
+          clienteCpf: cliente?.cpf,
+          cpf: cliente?.cpf,
+          dados: cleanedData,
+          createdAt: serverTimestamp(),
+          status: 'pendente'
+        });
       }
 
       setSuccess(true);
@@ -946,7 +945,7 @@ export default function FormularioPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="certificateBook">Livro *</Label>
+                    <Label htmlFor="certificateBook">Número do Livro *</Label>
                     <Input
                       id="certificateBook"
                       value={formData.certificateBook}
@@ -954,7 +953,7 @@ export default function FormularioPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="certificatePage">Folha *</Label>
+                    <Label htmlFor="certificatePage">Folha Número *</Label>
                     <Input
                       id="certificatePage"
                       value={formData.certificatePage}
@@ -976,7 +975,7 @@ export default function FormularioPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2 space-y-2">
+                <div className="space-y-2">
                   <Label htmlFor="address">Endereço *</Label>
                   <Input
                     id="address"
@@ -986,27 +985,28 @@ export default function FormularioPage() {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="addressNumber">Número *</Label>
                   <Input
                     id="addressNumber"
                     value={formData.addressNumber}
                     onChange={(e) => handleInputChange('addressNumber', e.target.value)}
+                    placeholder="Ex: 123"
                     required
                   />
                 </div>
-                
-                <div className="space-y-2">
+
+                <div className="md:col-span-2 space-y-2">
                   <Label htmlFor="complement">Complemento</Label>
                   <Input
                     id="complement"
                     value={formData.complement}
                     onChange={(e) => handleInputChange('complement', e.target.value)}
-                    placeholder="Apto, Bloco, etc."
+                    placeholder="Ex: Apto 45, Bloco B"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="neighborhood">Bairro *</Label>
                   <Input
@@ -1026,7 +1026,7 @@ export default function FormularioPage() {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label>Estado *</Label>
                   <Select value={formData.state} onValueChange={(v) => setFormData(prev => ({ ...prev, state: v }))}>
@@ -1076,9 +1076,9 @@ export default function FormularioPage() {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone *</Label>
+                  <Label htmlFor="phone">Telefone / WhatsApp *</Label>
                   <Input
                     id="phone"
                     value={formData.phone}
@@ -1096,7 +1096,6 @@ export default function FormularioPage() {
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="seu@email.com"
                     required
                   />
                 </div>
@@ -1125,29 +1124,45 @@ export default function FormularioPage() {
             </CardContent>
           </Card>
 
-          {/* Section 6: Autorização de Viagem */}
+          {/* Section 6: Autorização de Viagem para Menor */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-[#002776]">
                 <Plane className="h-5 w-5" />
                 6. Autorização de Viagem (Menor)
               </CardTitle>
+              <CardDescription>
+                Preencha apenas se o titular for menor de idade.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                <Label>Tipo de Autorização</Label>
-                <Select value={formData.travelAuthorization} onValueChange={(v) => setFormData(prev => ({ ...prev, travelAuthorization: v }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione (apenas para menores)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="AMBOS_PAIS">Autorização de ambos os pais</SelectItem>
-                    <SelectItem value="UM_PAI">Autorização de um dos pais</SelectItem>
-                    <SelectItem value="JUDICIAL">Autorização judicial</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500">Preencha apenas se o titular for menor de idade.</p>
-              </div>
+              <RadioGroup
+                value={formData.travelAuthorization}
+                onValueChange={(v) => setFormData(prev => ({ ...prev, travelAuthorization: v }))}
+                className="space-y-3"
+              >
+                <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <RadioGroupItem value="RESTRITA" id="auth1" className="mt-1" />
+                  <label htmlFor="auth1" className="cursor-pointer">
+                    <span className="font-semibold">Autorização Restrita</span>
+                    <p className="text-sm text-gray-500">Viajar apenas com um dos pais indistintamente. (Impresso no passaporte).</p>
+                  </label>
+                </div>
+                <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <RadioGroupItem value="AMPLA" id="auth2" className="mt-1" />
+                  <label htmlFor="auth2" className="cursor-pointer">
+                    <span className="font-semibold">Autorização Ampla</span>
+                    <p className="text-sm text-gray-500">Viajar desacompanhado ou com um dos pais. (Impresso no passaporte).</p>
+                  </label>
+                </div>
+                <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <RadioGroupItem value="POR DOCUMENTO" id="auth3" className="mt-1" />
+                  <label htmlFor="auth3" className="cursor-pointer">
+                    <span className="font-semibold">Autorização por Documento</span>
+                    <p className="text-sm text-gray-500">Dependerá de autorização específica para cada viagem na forma da lei.</p>
+                  </label>
+                </div>
+              </RadioGroup>
             </CardContent>
           </Card>
 
@@ -1167,31 +1182,40 @@ export default function FormularioPage() {
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="COMUM">Comum (azul)</SelectItem>
-                    <SelectItem value="OFICIAL">Oficial (verde)</SelectItem>
-                    <SelectItem value="DIPLOMATICO">Diplomático (vermelho)</SelectItem>
+                    <SelectItem value="COMUM">Comum</SelectItem>
+                    <SelectItem value="OFICIAL">Oficial</SelectItem>
+                    <SelectItem value="DIPLOMATICO">Diplomático</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </CardContent>
           </Card>
 
-          <div className="flex gap-4">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={handleSignOut}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              className="flex-1 bg-[#009639] hover:bg-[#007a2f]"
-            >
-              Revisar e Enviar
-            </Button>
-          </div>
+          <Alert className="border-yellow-300 bg-yellow-50">
+            <AlertCircle className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-800">
+              <strong>ATENÇÃO:</strong> É imprescindível enviar uma cópia da certidão (nascimento ou casamento), 
+              do passaporte anterior (caso possua) e um comprovante de residência para a agência conferir os dados.
+            </AlertDescription>
+          </Alert>
+
+          <Button
+            type="submit"
+            className="w-full bg-[#009639] hover:bg-[#007a2f] py-6 text-lg"
+            disabled={submitting}
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Enviando formulário...
+              </>
+            ) : (
+              <>
+                <FileText className="mr-2 h-5 w-5" />
+                Enviar Formulário
+              </>
+            )}
+          </Button>
         </form>
       </div>
     </div>
