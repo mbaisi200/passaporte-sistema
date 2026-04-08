@@ -265,7 +265,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="border-t border-white/20 mt-6 sm:mt-8 pt-6 sm:pt-8 text-center text-white/50 text-xs sm:text-sm">
-            © {new Date().getFullYear()} SB Viagens e Turismo. Todos os direitos reservados.
+            © 2025 SB Viagens e Turismo. Todos os direitos reservados.
           </div>
         </div>
       </footer>
