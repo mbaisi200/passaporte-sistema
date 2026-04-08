@@ -31,7 +31,8 @@ import {
   LogOut,
   CheckCircle2,
   Loader2,
-  XCircle
+  XCircle,
+  Search
 } from 'lucide-react';
 
 interface FormData {
@@ -79,6 +80,8 @@ export default function FormularioPage() {
   const { cliente, clienteLoading, userType, signOutCliente } = useAuth();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState('');
   const [success, setSuccess] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [showReview, setShowReview] = useState(false);
@@ -215,6 +218,50 @@ export default function FormularioPage() {
     if (v.length > 2) v = `(${v.substring(0, 2)}) ${v.substring(2)}`;
     if (v.length > 10) v = `${v.substring(0, 10)}-${v.substring(10)}`;
     return v;
+  };
+
+  const handleCepChange = (value: string) => {
+    const masked = maskCEP(value);
+    setFormData(prev => ({ ...prev, zipCode: masked }));
+    setCepError('');
+
+    // Auto-fetch when CEP is complete (8 digits)
+    const cleanCep = masked.replace(/\D/g, '');
+    if (cleanCep.length === 8) {
+      fetchCep(cleanCep);
+    }
+  };
+
+  const fetchCep = async (cepValue?: string) => {
+    const cleanCep = cepValue || formData.zipCode.replace(/\D/g, '');
+    if (cleanCep.length !== 8) return;
+
+    setCepLoading(true);
+    setCepError('');
+
+    try {
+      const response = await fetch(`/api/cep/${cleanCep}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setCepError(data.error || 'Erro ao buscar CEP.');
+        return;
+      }
+
+      // Auto-fill address fields
+      setFormData(prev => ({
+        ...prev,
+        address: data.logradouro ? data.logradouro.toUpperCase() : prev.address,
+        complement: data.complemento ? data.complemento.toUpperCase() : prev.complement,
+        neighborhood: data.bairro ? data.bairro.toUpperCase() : prev.neighborhood,
+        city: data.localidade ? data.localidade.toUpperCase() : prev.city,
+        state: data.uf || prev.state,
+      }));
+    } catch {
+      setCepError('Erro de conexão ao buscar CEP. Tente novamente.');
+    } finally {
+      setCepLoading(false);
+    }
   };
 
   const handleInputChange = (field: keyof FormData, value: string) => {
@@ -463,14 +510,14 @@ export default function FormularioPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div><span className="font-medium text-gray-500">CEP:</span><br />{formData.zipCode || '-'}</div>
+                <div><span className="font-medium text-gray-500">Telefone:</span><br />{formData.phone || '-'}</div>
                 <div><span className="font-medium text-gray-500">Endereço:</span><br />{formData.address || '-'}</div>
                 <div><span className="font-medium text-gray-500">Número:</span><br />{formData.addressNumber || '-'}</div>
-                <div className="md:col-span-2"><span className="font-medium text-gray-500">Complemento:</span><br />{formData.complement || '-'}</div>
+                <div><span className="font-medium text-gray-500">Complemento:</span><br />{formData.complement || '-'}</div>
                 <div><span className="font-medium text-gray-500">Bairro:</span><br />{formData.neighborhood || '-'}</div>
                 <div><span className="font-medium text-gray-500">Cidade:</span><br />{formData.city || '-'}</div>
                 <div><span className="font-medium text-gray-500">Estado:</span><br />{formData.state || '-'}</div>
-                <div><span className="font-medium text-gray-500">CEP:</span><br />{formData.zipCode || '-'}</div>
-                <div><span className="font-medium text-gray-500">Telefone:</span><br />{formData.phone || '-'}</div>
                 <div><span className="font-medium text-gray-500">E-mail:</span><br />{formData.email || '-'}</div>
               </div>
             </CardContent>
@@ -976,6 +1023,41 @@ export default function FormularioPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label htmlFor="zipCode">CEP *</Label>
+                  <div className="relative">
+                    <Input
+                      id="zipCode"
+                      value={formData.zipCode}
+                      onChange={(e) => handleCepChange(e.target.value)}
+                      onBlur={() => fetchCep()}
+                      placeholder="00000-000"
+                      maxLength={9}
+                      required
+                      className={cepLoading ? 'pr-10' : ''}
+                    />
+                    {cepLoading && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-[#002776]" />
+                    )}
+                  </div>
+                  {cepError && (
+                    <p className="text-xs text-red-500">{cepError}</p>
+                  )}
+                  <p className="text-xs text-gray-500">Digite o CEP para buscar o endereço automaticamente.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Telefone / WhatsApp *</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData(prev => ({ ...prev, phone: maskPhone(e.target.value) }))}
+                    placeholder="(00) 00000-0000"
+                    maxLength={15}
+                    required
+                  />
+                </div>
+
+                <div className="md:col-span-2 space-y-2">
                   <Label htmlFor="address">Endereço *</Label>
                   <Input
                     id="address"
@@ -997,7 +1079,7 @@ export default function FormularioPage() {
                   />
                 </div>
 
-                <div className="md:col-span-2 space-y-2">
+                <div className="space-y-2">
                   <Label htmlFor="complement">Complemento</Label>
                   <Input
                     id="complement"
@@ -1016,7 +1098,7 @@ export default function FormularioPage() {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="city">Cidade *</Label>
                   <Input
@@ -1064,31 +1146,7 @@ export default function FormularioPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="zipCode">CEP *</Label>
-                  <Input
-                    id="zipCode"
-                    value={formData.zipCode}
-                    onChange={(e) => setFormData(prev => ({ ...prev, zipCode: maskCEP(e.target.value) }))}
-                    placeholder="00000-000"
-                    maxLength={9}
-                    required
-                  />
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Telefone / WhatsApp *</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: maskPhone(e.target.value) }))}
-                    placeholder="(00) 00000-0000"
-                    maxLength={15}
-                    required
-                  />
-                </div>
-                
                 <div className="space-y-2">
                   <Label htmlFor="email">E-mail *</Label>
                   <Input
