@@ -23,10 +23,10 @@ export default function HomePage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
-                <span className="text-[#002776] font-bold text-sm sm:text-lg">SB</span>
+                <span className="text-[#002776] font-bold text-sm sm:text-lg">IHS</span>
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl font-bold text-white">SB Viagens e Turismo</h1>
+                <h1 className="text-lg sm:text-xl font-bold text-white">IHS Vistos Internacionais</h1>
                 <p className="text-xs sm:text-sm text-white/70 hidden sm:block">Especialistas em documentação para viagem</p>
               </div>
             </div>
@@ -241,9 +241,9 @@ export default function HomePage() {
             <div>
               <div className="flex items-center gap-3 mb-3 sm:mb-4">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full flex items-center justify-center">
-                  <span className="text-[#002776] font-bold text-sm sm:text-base">SB</span>
+                  <span className="text-[#002776] font-bold text-sm sm:text-base">IHS</span>
                 </div>
-                <span className="font-bold text-base sm:text-lg">SB Viagens e Turismo</span>
+                <span className="font-bold text-base sm:text-lg">IHS Vistos Internacionais</span>
               </div>
               <p className="text-white/70 text-xs sm:text-sm">
                 Especialistas em documentação para viagem, 
@@ -265,7 +265,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="border-t border-white/20 mt-6 sm:mt-8 pt-6 sm:pt-8 text-center text-white/50 text-xs sm:text-sm">
-            © 2025 SB Viagens e Turismo. Todos os direitos reservados.
+            © 2025 IHS Vistos Internacionais. Todos os direitos reservados.
           </div>
         </div>
       </footer>

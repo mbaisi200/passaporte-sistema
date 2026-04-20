@@ -33,7 +33,8 @@ import {
   setDoc,
   serverTimestamp,
   query,
-  orderBy
+  orderBy,
+  where
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { 
@@ -106,11 +107,23 @@ export default function ManageClientesPage() {
         ...doc.data()
       })) as Cliente[];
       
-      // Sort: Active first (by date desc), then Blocked (by date desc)
-      const sortedData = data.sort((a, b) => {
-        if (a.blocked !== b.blocked) {
-          return a.blocked ? 1 : -1;
+      // Buscar formulários para verificar status
+      const formsQ = query(collection(db, 'formularios'));
+      const formsSnapshot = await getDocs(formsQ);
+      const processedCpfs = new Set<string>();
+      
+      formsSnapshot.docs.forEach(doc => {
+        const formData = doc.data();
+        if (formData.status === 'processado' && formData.cpf) {
+          processedCpfs.add(formData.cpf.replace(/\D/g, ''));
         }
+      });
+      
+      // Filtrar: não bloqueados E não tem formulário processado
+      const activeClientes = data.filter(c => !c.blocked && !processedCpfs.has(c.cpf));
+      
+      // Sort: by date desc
+      const sortedData = activeClientes.sort((a, b) => {
         const dateA = a.addedAt?.seconds || 0;
         const dateB = b.addedAt?.seconds || 0;
         return dateB - dateA;
@@ -246,11 +259,11 @@ export default function ManageClientesPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                <span className="text-[#623AA2] font-bold">SB</span>
+                <span className="text-[#623AA2] font-bold">IHS</span>
               </div>
               <div>
                 <h1 className="text-xl font-bold">Gerenciar Clientes</h1>
-                <p className="text-sm text-white/80">SB Viagens e Turismo</p>
+                <p className="text-sm text-white/80">IHS Vistos Internacionais</p>
               </div>
             </div>
             <Button 

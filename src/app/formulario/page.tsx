@@ -409,10 +409,10 @@ export default function FormularioPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-[#002776] to-[#009639] rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold">SB</span>
+                  <span className="text-white font-bold">IHS</span>
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-[#002776]">SB Viagens e Turismo</h1>
+                  <h1 className="text-xl font-bold text-[#002776]">IHS Vistos Internacionais</h1>
                   <p className="text-sm text-gray-500">Revise seus dados antes de enviar</p>
                 </div>
               </div>
@@ -609,10 +609,10 @@ export default function FormularioPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gradient-to-br from-[#002776] to-[#009639] rounded-full flex items-center justify-center">
-                <span className="text-white font-bold">SB</span>
+                <span className="text-white font-bold">IHS</span>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-[#002776]">SB Viagens e Turismo</h1>
+                <h1 className="text-xl font-bold text-[#002776]">IHS Vistos Internacionais</h1>
                 <p className="text-sm text-gray-500">Formulário para Emissão de Passaporte</p>
               </div>
             </div>

@@ -126,7 +126,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-[#002776] to-[#009639] rounded-full flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl sm:text-2xl">SB</span>
+              <span className="text-white font-bold text-xl sm:text-2xl">IHS</span>
             </div>
           </div>
           <CardTitle className="text-xl sm:text-2xl text-[#002776]">Acesso ao Sistema</CardTitle>

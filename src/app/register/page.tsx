@@ -66,7 +66,7 @@ export default function RegisterPage() {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 bg-gradient-to-br from-[#002776] to-[#009639] rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-xl">SB</span>
+              <span className="text-white font-bold text-xl">IHS</span>
             </div>
           </div>
           <CardTitle className="text-2xl text-[#002776]">Primeiro Acesso</CardTitle>

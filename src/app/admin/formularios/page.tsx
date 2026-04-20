@@ -146,12 +146,18 @@ export default function FormulariosPage() {
         await updateDoc(doc(db, 'authorized_cpfs', cleanCpf), {
           blocked: true
         });
+        await updateDoc(doc(db, 'clientes', cleanCpf), {
+          blocked: true
+        });
       }
 
       // If status changes back to "pendente", unblock
       if (newStatus === 'pendente' && formCpf) {
         const cleanCpf = formCpf.replace(/\D/g, '');
         await updateDoc(doc(db, 'authorized_cpfs', cleanCpf), {
+          blocked: false
+        });
+        await updateDoc(doc(db, 'clientes', cleanCpf), {
           blocked: false
         });
       }
@@ -268,7 +274,7 @@ export default function FormulariosPage() {
     content += `TIPO PASSAPORTE: ${d.passportType || '-'}\n`;
 
     content += `\n==================================================\n`;
-    content += `SB TURISMO E VIAGENS\n`;
+    content += `IHS TURISMO E VIAGENS\n`;
 
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -538,11 +544,11 @@ export default function FormulariosPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                <span className="text-[#623AA2] font-bold">SB</span>
+                <span className="text-[#623AA2] font-bold">IHS</span>
               </div>
               <div>
                 <h1 className="text-xl font-bold">Formulários Recebidos</h1>
-                <p className="text-sm text-white/80">SB Viagens e Turismo</p>
+                <p className="text-sm text-white/80">IHS Vistos Internacionais</p>
               </div>
             </div>
             <Button 
