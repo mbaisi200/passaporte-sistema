@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { 
+import {
   collection,
   getDocs,
   deleteDoc,
@@ -34,7 +34,8 @@ import {
   serverTimestamp,
   query,
   orderBy,
-  where
+  where,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { 
@@ -59,6 +60,8 @@ interface Cliente {
   blocked: boolean;
   addedBy: string;
   addedAt: { seconds: number } | null;
+  formStatus?: string | null;
+  hasProcessedForm?: boolean;
 }
 
 const DEFAULT_PASSWORD = '123456';
@@ -74,6 +77,8 @@ export default function ManageClientesPage() {
   const [clienteToDelete, setClienteToDelete] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [sortField, setSortField] = useState<keyof Cliente | 'formStatus'>('addedAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     if (!loading && (!user || userData?.role !== 'admin')) {
@@ -81,62 +86,83 @@ export default function ManageClientesPage() {
     }
   }, [user, userData, loading, router]);
 
-  useEffect(() => {
-    fetchClientes();
-  }, []);
-
-  useEffect(() => {
-    if (searchTerm) {
-      const filtered = clientes.filter(c => 
-        c.cpf.includes(searchTerm.replace(/\D/g, '')) || 
-        (c.nome && c.nome.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-      setFilteredClientes(filtered);
-    } else {
-      setFilteredClientes(clientes);
-    }
-  }, [searchTerm, clientes]);
-
-  const fetchClientes = async () => {
-    try {
-      // Buscar da coleção 'clientes' no Firestore
-      const q = query(collection(db, 'clientes'), orderBy('addedAt', 'desc'));
-      const snapshot = await getDocs(q);
+   useEffect(() => {
+    // Usar onSnapshot para atualização em tempo real
+    const q = query(collection(db, 'clientes'), orderBy('addedAt', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const data = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Cliente[];
       
       // Buscar formulários para verificar status
-      const formsQ = query(collection(db, 'formularios'));
-      const formsSnapshot = await getDocs(formsQ);
-      const processedCpfs = new Set<string>();
+      const formsSnapshot = await getDocs(query(collection(db, 'formularios')));
+      const clientFormStatus = new Map<string, string>();
       
       formsSnapshot.docs.forEach(doc => {
         const formData = doc.data();
-        if (formData.status === 'processado' && formData.cpf) {
-          processedCpfs.add(formData.cpf.replace(/\D/g, ''));
+        if (formData.cpf) {
+          const cleanCpf = formData.cpf.replace(/\D/g, '');
+          clientFormStatus.set(cleanCpf, formData.status || 'pendente');
         }
       });
       
-      // Filtrar: não bloqueados E não tem formulário processado
-      const activeClientes = data.filter(c => !c.blocked && !processedCpfs.has(c.cpf));
+      // Adicionar informação de status do formulário para cada cliente
+      const clientesWithStatus = data.map(c => ({
+        ...c,
+        formStatus: clientFormStatus.get(c.cpf) || null,
+        hasProcessedForm: clientFormStatus.get(c.cpf) === 'processado'
+      }));
       
-      // Sort: by date desc
-      const sortedData = activeClientes.sort((a, b) => {
-        const dateA = a.addedAt?.seconds || 0;
-        const dateB = b.addedAt?.seconds || 0;
-        return dateB - dateA;
-      });
-      
-      setClientes(sortedData);
-      setFilteredClientes(sortedData);
-    } catch (error) {
-      console.error('Erro ao buscar clientes:', error);
-    }
-  };
+      setClientes(clientesWithStatus);
+      setFilteredClientes(clientesWithStatus);
+    });
+    
+    // Cleanup ao desmontar componente
+    return () => unsubscribe();
+  }, []);
 
-  const maskCPF = (value: string) => {
+  useEffect(() => {
+    let result = [...clientes];
+    
+    // Aplicar busca
+    if (searchTerm) {
+      result = result.filter(c => 
+        c.cpf.includes(searchTerm.replace(/\D/g, '')) || 
+        (c.nome && c.nome.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+    
+    // Aplicar ordenação
+    result.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+      
+      if (sortField === 'formStatus') {
+        aValue = a.formStatus || '';
+        bValue = b.formStatus || '';
+      } else if (sortField === 'addedAt') {
+        aValue = a.addedAt?.seconds || 0;
+        bValue = b.addedAt?.seconds || 0;
+      } else {
+        aValue = a[sortField] || '';
+        bValue = b[sortField] || '';
+      }
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+      
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+    
+    setFilteredClientes(result);
+  }, [searchTerm, clientes, sortField, sortDirection]);
+ 
+   const maskCPF = (value: string) => {
     let v = value.replace(/\D/g, '');
     if (v.length > 11) v = v.slice(0, 11);
     v = v.replace(/(\d{3})(\d)/, '$1.$2');
@@ -237,6 +263,20 @@ export default function ManageClientesPage() {
   const formatDate = (timestamp: { seconds: number } | null) => {
     if (!timestamp) return '-';
     return new Date(timestamp.seconds * 1000).toLocaleDateString('pt-BR');
+  };
+
+  const handleSort = (field: keyof Cliente | 'formStatus') => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: keyof Cliente | 'formStatus') => {
+    if (sortField !== field) return '↕️';
+    return sortDirection === 'asc' ? '↑' : '↓';
   };
 
   if (loading) {
@@ -394,9 +434,15 @@ export default function ManageClientesPage() {
         {/* Clientes List */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-[#623AA2]">Clientes Cadastrados ({clientes.length})</CardTitle>
-              <div className="relative w-64">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-[#623AA2]">Clientes Cadastrados ({clientes.length})</CardTitle>
+                <span className="text-sm text-green-600 flex items-center gap-1">
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                  Atualização automática ativa
+                </span>
+              </div>
+              <div className="relative w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Buscar CPF ou nome..."
@@ -410,69 +456,108 @@ export default function ManageClientesPage() {
           <CardContent>
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[180px]">Nome</TableHead>
-                    <TableHead className="w-[140px]">CPF</TableHead>
-                    <TableHead className="w-[100px]">Status</TableHead>
-                    <TableHead className="w-[120px]">Cadastro</TableHead>
-                    <TableHead className="text-right w-[100px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
+                 <TableHeader>
+                    <TableRow>
+                      <TableHead 
+                        className="w-[180px] cursor-pointer hover:bg-gray-100 select-none"
+                        onClick={() => handleSort('nome')}
+                      >
+                        Nome {getSortIcon('nome')}
+                      </TableHead>
+                      <TableHead 
+                        className="w-[140px] cursor-pointer hover:bg-gray-100 select-none"
+                        onClick={() => handleSort('cpf')}
+                      >
+                        CPF {getSortIcon('cpf')}
+                      </TableHead>
+                      <TableHead 
+                        className="w-[100px] cursor-pointer hover:bg-gray-100 select-none"
+                        onClick={() => handleSort('blocked')}
+                      >
+                        Status {getSortIcon('blocked')}
+                      </TableHead>
+                      <TableHead 
+                        className="w-[130px] cursor-pointer hover:bg-gray-100 select-none"
+                        onClick={() => handleSort('formStatus')}
+                      >
+                        Formulário {getSortIcon('formStatus')}
+                      </TableHead>
+                      <TableHead 
+                        className="w-[120px] cursor-pointer hover:bg-gray-100 select-none"
+                        onClick={() => handleSort('addedAt')}
+                      >
+                        Cadastro {getSortIcon('addedAt')}
+                      </TableHead>
+                      <TableHead className="text-right w-[100px]">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
                 <TableBody>
                   {filteredClientes.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                        Nenhum cliente cadastrado
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredClientes.map((cliente) => (
-                      <TableRow key={cliente.id}>
-                        <TableCell className="font-medium truncate max-w-[180px]">{cliente.nome || '-'}</TableCell>
-                        <TableCell className="font-mono text-sm">{formatCPF(cliente.cpf)}</TableCell>
-                        <TableCell>
-                          {cliente.blocked ? (
-                            <span className="inline-flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded">
-                              <XCircle className="h-4 w-4" />
-                              Bloqueado
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded">
-                              <CheckCircle className="h-4 w-4" />
-                              Ativo
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>{formatDate(cliente.addedAt)}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={cliente.blocked ? "text-green-600 hover:bg-green-50" : "text-orange-600 hover:bg-orange-50"}
-                              onClick={() => handleToggleBlock(cliente)}
-                              title={cliente.blocked ? "Liberar acesso" : "Bloquear acesso"}
-                            >
-                              <RefreshCw className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => {
-                                setClienteToDelete(cliente.id);
-                                setDialogOpen(true);
-                              }}
-                              title="Excluir"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                     <TableRow>
+                       <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                         Nenhum cliente cadastrado
+                       </TableCell>
+                     </TableRow>
+                   ) : (
+                     filteredClientes.map((cliente) => (
+                       <TableRow key={cliente.id}>
+                         <TableCell className="font-medium truncate max-w-[180px]">{cliente.nome || '-'}</TableCell>
+                         <TableCell className="font-mono text-sm">{formatCPF(cliente.cpf)}</TableCell>
+                         <TableCell>
+                           {cliente.blocked ? (
+                             <span className="inline-flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded">
+                               <XCircle className="h-4 w-4" />
+                               Bloqueado
+                             </span>
+                           ) : (
+                             <span className="inline-flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded">
+                               <CheckCircle className="h-4 w-4" />
+                               Ativo
+                             </span>
+                           )}
+                         </TableCell>
+                         <TableCell>
+                           {cliente.formStatus === 'processado' ? (
+                             <span className="inline-flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded text-xs">
+                               Processado
+                             </span>
+                           ) : cliente.formStatus === 'pendente' ? (
+                             <span className="inline-flex items-center gap-1 text-yellow-600 bg-yellow-50 px-2 py-1 rounded text-xs">
+                               Pendente
+                             </span>
+                           ) : (
+                             <span className="text-gray-400 text-xs">-</span>
+                           )}
+                         </TableCell>
+                         <TableCell>{formatDate(cliente.addedAt)}</TableCell>
+                         <TableCell className="text-right">
+                           <div className="flex items-center justify-end gap-1">
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               className={cliente.blocked ? "text-green-600 hover:bg-green-50" : "text-orange-600 hover:bg-orange-50"}
+                               onClick={() => handleToggleBlock(cliente)}
+                               title={cliente.blocked ? "Liberar acesso" : "Bloquear acesso"}
+                             >
+                               <RefreshCw className="h-4 w-4" />
+                             </Button>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                               onClick={() => {
+                                 setClienteToDelete(cliente.id);
+                                 setDialogOpen(true);
+                               }}
+                               title="Excluir"
+                             >
+                               <Trash2 className="h-4 w-4" />
+                             </Button>
+                           </div>
+                         </TableCell>
+                       </TableRow>
+                     ))
+                   )}
                 </TableBody>
               </Table>
             </div>

@@ -298,21 +298,18 @@ export default function FormularioPage() {
       // Clean data before saving (remove formatting from numbers)
       const cleanedData = cleanDataForStorage(formData);
       
-      if (existingFormId) {
-        // Update existing form
-        await updateDoc(doc(db, 'formularios', existingFormId), {
-          dados: cleanedData,
-          updatedAt: serverTimestamp()
-        });
-      } else {
-        // Create new form
-        await addDoc(collection(db, 'formularios'), {
-          clienteCpf: cliente?.cpf,
+      // Use API to submit form (this will also update client name)
+      const response = await fetch('/api/formularios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           cpf: cliente?.cpf,
-          dados: cleanedData,
-          createdAt: serverTimestamp(),
-          status: 'pendente'
-        });
+          dados: cleanedData
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao enviar formulário');
       }
 
       setSuccess(true);
