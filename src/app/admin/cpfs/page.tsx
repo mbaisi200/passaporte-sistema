@@ -27,7 +27,6 @@ import {
 import {
   collection,
   getDocs,
-  deleteDoc,
   doc,
   updateDoc,
   setDoc,
@@ -212,7 +211,6 @@ export default function ManageClientesPage() {
         text: `Cliente cadastrado com sucesso! Login: ${cleanCpf} | Senha: ${DEFAULT_PASSWORD}` 
       });
       setNewCpf('');
-      fetchClientes();
     } catch (error: unknown) {
       console.error('Erro:', error);
       if (error instanceof Error) {
@@ -227,13 +225,23 @@ export default function ManageClientesPage() {
     if (!clienteToDelete) return;
     
     try {
-      await deleteDoc(doc(db, 'clientes', clienteToDelete));
+      const response = await fetch('/api/delete-cliente', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cpf: clienteToDelete }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao remover cliente');
+      }
+      
       setMessage({ type: 'success', text: 'Cliente removido com sucesso!' });
       setDialogOpen(false);
       setClienteToDelete(null);
-      fetchClientes();
     } catch (error) {
-      setMessage({ type: 'error', text: 'Erro ao remover cliente.' });
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Erro ao remover cliente.' });
     }
   };
 
@@ -248,7 +256,6 @@ export default function ManageClientesPage() {
         type: 'success', 
         text: newBlockedStatus ? 'Acesso bloqueado com sucesso!' : 'Acesso liberado com sucesso!' 
       });
-      fetchClientes();
     } catch (error) {
       console.error('Erro:', error);
       setMessage({ type: 'error', text: 'Erro ao alterar status de acesso.' });
