@@ -261,3 +261,86 @@ OBSERVAÇÕES
 ================================================================================
 FIM DO RELATÓRIO
 ================================================================================
+
+================================================================================
+ALTERAÇÕES REALIZADAS NA SEÇÃO 3 - CERTIDÃO
+================================================================================
+Data: 20/05/2026
+Arquivos modificados:
+  - src/app/formulario/page.tsx
+  - src/app/admin/formularios/page.tsx
+================================================================================
+
+DESCRIÇÃO DAS ALTERAÇÕES:
+--------------------------------------------------------------------------------
+Na seção 3 do formulário (Certidão), foram realizadas as seguintes modificações:
+
+1. NOVO CAMPO "NOME DA CIDADE DA CERTIDÃO" ADICIONADO
+   - Posição: Abaixo do campo "Número da Certidão" (para ambos os modelos)
+   - Obrigatório: SIM (*)
+   - Campo no FormData: certificateCity
+   - Exibido na tela de revisão, no painel admin e no arquivo .txt
+
+2. UNIFICAÇÃO SÉRIE/NÚMERO PASSAPORTE NO ARQUIVO .TXT
+   - Antes: Linhas separadas "SÉRIE PASSAPORTE:" e "NÚMERO PASSAPORTE:"
+   - Depois: Linha única "SÉRIE/NÚMERO PASSAPORTE:"
+
+================================================================================
+ALTERAÇÕES NA INTERFACE FormData (formulario/page.tsx)
+================================================================================
+
+Adicionado:
+
+  certificateCity: string;  // NOVO - obrigatório
+
+================================================================================
+ALTERAÇÕES NO ESTADO INICIAL (useState)
+================================================================================
+
+Adicionado valor inicial vazio:
+
+  certificateCity: '',
+
+================================================================================
+ALTERAÇÕES NO FORMULÁRIO (SEÇÃO 3)
+================================================================================
+
+Para ambos os modelos (NOVO e ANTIGO), abaixo do campo "Número da Certidão":
+
+<div className="space-y-2">
+  <Label htmlFor="certificateCityNew">Nome da Cidade da Certidão *</Label>
+  <Input
+    id="certificateCityNew"
+    value={formData.certificateCity}
+    onChange={(e) => handleInputChange('certificateCity', e.target.value)}
+  />
+</div>
+
+================================================================================
+ALTERAÇÕES NO ARQUIVO .TXT (admin/formularios/page.tsx)
+================================================================================
+
+UNIFICAÇÃO SÉRIE/NÚMERO PASSAPORTE:
+-----------------------------------
+Antes:
+  SÉRIE PASSAPORTE: AB
+  NÚMERO PASSAPORTE: 123456
+
+Depois:
+  SÉRIE/NÚMERO PASSAPORTE: AB 123456
+
+NOVA LINHA NA SEÇÃO 3 - CERTIDÃO:
+---------------------------------
+Adicionada ao final da seção 3:
+  CIDADE DA CERTIDÃO: São Paulo
+
+================================================================================
+ALTERAÇÕES NA VISUALIZAÇÃO DE DETALHES (admin/formularios/page.tsx)
+================================================================================
+
+Adicionado "Cidade da Certidão" na grade de detalhes, abaixo dos campos
+de número do modelo correspondente.
+
+================================================================================
+FIM DO RELATÓRIO
+================================================================================

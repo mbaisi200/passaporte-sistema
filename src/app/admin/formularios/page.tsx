@@ -233,8 +233,7 @@ export default function FormulariosPage() {
     content += `DATA EXPEDIÇÃO RG: ${formatDateForm(d.rgIssueDate || '')}\n`;
     content += `POSSUI PASSAPORTE ANTERIOR: ${d.previousPassport === 'SIM' ? 'Sim' : d.previousPassport === 'NAO' ? 'Não' : '-'}\n`;
     if(d.previousPassport === 'SIM') {
-      content += `SÉRIE PASSAPORTE: ${d.passportSeries || '-'}\n`;
-      content += `NÚMERO PASSAPORTE: ${d.passportNumber || '-'}\n`;
+      content += `SÉRIE/NÚMERO PASSAPORTE: ${(d.passportSeries || '') + (d.passportSeries && d.passportNumber ? ' ' : '') + (d.passportNumber || '') || '-'}\n`;
       content += `SITUAÇÃO: ${d.passportStatus || '-'}\n`;
     }
 
@@ -249,6 +248,7 @@ export default function FormulariosPage() {
       content += `LIVRO: ${d.certificateBook || '-'}\n`;
       content += `FOLHA: ${d.certificatePage || '-'}\n`;
     }
+    content += `CIDADE DA CERTIDÃO: ${d.certificateCity || '-'}\n`;
 
     content += `\n4. CONTATO E ENDEREÇO\n`;
     content += `----------------------\n`;
@@ -427,10 +427,16 @@ export default function FormulariosPage() {
               <p className="font-medium">{dados.certificateModel === 'NOVO' ? 'Modelo Novo' : dados.certificateModel === 'ANTIGO' ? 'Modelo Antigo' : '-'}</p>
             </div>
             {dados.certificateModel === 'NOVO' && (
-              <div className="sm:col-span-2 break-all">
-                <span className="text-gray-500">Número Certidão:</span>
-                <p className="font-medium">{dados.certificateNumberNew || '-'}</p>
-              </div>
+              <>
+                <div className="sm:col-span-2 break-all">
+                  <span className="text-gray-500">Número Certidão:</span>
+                  <p className="font-medium">{dados.certificateNumberNew || '-'}</p>
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="text-gray-500">Cidade da Certidão:</span>
+                  <p className="font-medium">{dados.certificateCity || '-'}</p>
+                </div>
+              </>
             )}
             {dados.certificateModel === 'ANTIGO' && (
               <>
@@ -445,6 +451,10 @@ export default function FormulariosPage() {
                 <div>
                   <span className="text-gray-500">Folha:</span>
                   <p className="font-medium">{dados.certificatePage || '-'}</p>
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="text-gray-500">Cidade da Certidão:</span>
+                  <p className="font-medium">{dados.certificateCity || '-'}</p>
                 </div>
               </>
             )}

@@ -62,6 +62,7 @@ interface FormData {
   certificateNumberOld: string;
   certificateBook: string;
   certificatePage: string;
+  certificateCity: string;
   address: string;
   addressNumber: string;
   complement: string;
@@ -115,6 +116,7 @@ export default function FormularioPage() {
     certificateNumberOld: '',
     certificateBook: '',
     certificatePage: '',
+    certificateCity: '',
     address: '',
     addressNumber: '',
     complement: '',
@@ -485,13 +487,17 @@ export default function FormularioPage() {
                 <div><span className="font-medium text-gray-500">Tipo:</span><br />{formData.certificateType || '-'}</div>
                 <div><span className="font-medium text-gray-500">Modelo:</span><br />{formData.certificateModel === 'NOVO' ? 'Modelo Novo' : formData.certificateModel === 'ANTIGO' ? 'Modelo Antigo' : '-'}</div>
                 {formData.certificateModel === 'NOVO' && (
-                  <div className="md:col-span-2"><span className="font-medium text-gray-500">Número Certidão:</span><br />{formData.certificateNumberNew || '-'}</div>
+                  <>
+                    <div className="md:col-span-2"><span className="font-medium text-gray-500">Número Certidão:</span><br />{formData.certificateNumberNew || '-'}</div>
+                    <div className="md:col-span-2"><span className="font-medium text-gray-500">Cidade da Certidão:</span><br />{formData.certificateCity || '-'}</div>
+                  </>
                 )}
                 {formData.certificateModel === 'ANTIGO' && (
                   <>
                     <div><span className="font-medium text-gray-500">Número:</span><br />{formData.certificateNumberOld || '-'}</div>
                     <div><span className="font-medium text-gray-500">Livro:</span><br />{formData.certificateBook || '-'}</div>
                     <div><span className="font-medium text-gray-500">Folha:</span><br />{formData.certificatePage || '-'}</div>
+                    <div className="md:col-span-2"><span className="font-medium text-gray-500">Cidade da Certidão:</span><br />{formData.certificateCity || '-'}</div>
                   </>
                 )}
               </div>
@@ -978,6 +984,17 @@ export default function FormularioPage() {
                 </div>
               )}
 
+              {formData.certificateModel === 'NOVO' && (
+                <div className="space-y-2">
+                  <Label htmlFor="certificateCityNew">Nome da Cidade da Certidão *</Label>
+                  <Input
+                    id="certificateCityNew"
+                    value={formData.certificateCity}
+                    onChange={(e) => handleInputChange('certificateCity', e.target.value)}
+                  />
+                </div>
+              )}
+
               {formData.certificateModel === 'ANTIGO' && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
@@ -1004,6 +1021,17 @@ export default function FormularioPage() {
                       onChange={(e) => handleInputChange('certificatePage', e.target.value)}
                     />
                   </div>
+                </div>
+              )}
+
+              {formData.certificateModel === 'ANTIGO' && (
+                <div className="space-y-2">
+                  <Label htmlFor="certificateCityOld">Nome da Cidade da Certidão *</Label>
+                  <Input
+                    id="certificateCityOld"
+                    value={formData.certificateCity}
+                    onChange={(e) => handleInputChange('certificateCity', e.target.value)}
+                  />
                 </div>
               )}
             </CardContent>
