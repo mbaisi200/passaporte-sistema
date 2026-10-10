@@ -124,20 +124,28 @@ export default function ManageClientesPage() {
 
   useEffect(() => {
     let result = [...clientes];
-    
+
     // Aplicar busca
     if (searchTerm) {
-      result = result.filter(c => 
-        c.cpf.includes(searchTerm.replace(/\D/g, '')) || 
-        (c.nome && c.nome.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
+      const cleanSearchTerm = searchTerm.replace(/\D/g, '');
+      const isSearchTermNumeric = cleanSearchTerm.length > 0;
+
+      result = result.filter(c => {
+        // Busca por CPF (apenas se o termo contém dígitos)
+        const matchesCPF = isSearchTermNumeric && c.cpf.includes(cleanSearchTerm);
+
+        // Busca por nome (se o nome existe)
+        const matchesNome = c.nome && c.nome.toLowerCase().includes(searchTerm.toLowerCase());
+
+        return matchesCPF || matchesNome;
+      });
     }
-    
+
     // Aplicar ordenação
     result.sort((a, b) => {
       let aValue: any;
       let bValue: any;
-      
+
       if (sortField === 'formStatus') {
         aValue = a.formStatus || '';
         bValue = b.formStatus || '';
@@ -148,16 +156,16 @@ export default function ManageClientesPage() {
         aValue = a[sortField] || '';
         bValue = b[sortField] || '';
       }
-      
+
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortDirection === 'asc' 
+        return sortDirection === 'asc'
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
-      
+
       return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
     });
-    
+
     setFilteredClientes(result);
   }, [searchTerm, clientes, sortField, sortDirection]);
  
